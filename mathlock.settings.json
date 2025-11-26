@@ -1,0 +1,8 @@
+{
+  "RequiredCorrectAnswers": 10,
+  "MinOperand": 1,
+  "MaxOperand": 10,
+  "IdleMinutesBeforeLock": 5,
+  "ShowQuizOnStartup": true,
+  "LockOnWakeFromSleep": true
+}
