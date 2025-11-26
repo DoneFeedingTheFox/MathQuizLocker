@@ -1,6 +1,8 @@
 # Build results
 bin/
 obj/
+publish/
+
 
 # User-specific files
 *.user
@@ -21,3 +23,5 @@ obj/
 
 # Cache
 *.cache/
+
+

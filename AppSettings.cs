@@ -12,6 +12,8 @@ namespace MathQuizLocker
         public int IdleMinutesBeforeLock { get; set; } = 5;
         public bool ShowQuizOnStartup { get; set; } = true;
         public bool LockOnWakeFromSleep { get; set; } = true;
+        public bool EnableDeveloperHotkey { get; set; } = true;
+
 
         public static string GetConfigPath()
         {

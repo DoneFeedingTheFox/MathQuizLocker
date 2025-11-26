@@ -4,5 +4,6 @@
   "MaxOperand": 10,
   "IdleMinutesBeforeLock": 5,
   "ShowQuizOnStartup": true,
-  "LockOnWakeFromSleep": true
+  "LockOnWakeFromSleep": true,
+  "EnableDeveloperHotkey": true
 }

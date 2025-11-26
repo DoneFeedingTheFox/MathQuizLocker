@@ -1,9 +1,71 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace MathQuizLocker
 {
+    // Simple rounded panel with soft shadow
+    public class RoundedPanel : Panel
+    {
+        private int _cornerRadius = 20;  // fixed radius; no public property
+
+        public RoundedPanel()
+        {
+            this.DoubleBuffered = true;
+            this.BackColor = Color.FromArgb(32, 32, 32);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            Rectangle rect = new Rectangle(0, 0, this.Width - 1, this.Height - 1);
+
+            using (GraphicsPath path = GetRoundedRect(rect, _cornerRadius))
+            {
+                // Shadow
+                using (GraphicsPath shadowPath = GetRoundedRect(
+                           new Rectangle(rect.X + 4, rect.Y + 4, rect.Width, rect.Height),
+                           _cornerRadius))
+                {
+                    using (Brush shadowBrush = new SolidBrush(Color.FromArgb(80, 0, 0, 0)))
+                    {
+                        g.FillPath(shadowBrush, shadowPath);
+                    }
+                }
+
+                using (Brush fillBrush = new SolidBrush(this.BackColor))
+                {
+                    g.FillPath(fillBrush, path);
+                }
+
+                using (Pen borderPen = new Pen(Color.FromArgb(70, 70, 70), 1.5f))
+                {
+                    g.DrawPath(borderPen, path);
+                }
+            }
+        }
+
+
+
+        private GraphicsPath GetRoundedRect(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            int d = radius * 2;
+
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+    }
+
     public class QuizForm : Form
     {
         private readonly Random _rnd = new Random();
@@ -13,7 +75,7 @@ namespace MathQuizLocker
         private int _correctCount = 0;
         private bool _solved = false;
 
-        private Panel _card = null!;
+        private RoundedPanel _card = null!;
         private Label _lblTitle = null!;
         private Label _lblQuestion = null!;
         private TextBox _txtAnswer = null!;
@@ -30,23 +92,23 @@ namespace MathQuizLocker
 
         private void InitializeUi()
         {
-            // Fullscreen “lock” look
+            // Fullscreen lock look
             this.FormBorderStyle = FormBorderStyle.None;
             this.WindowState = FormWindowState.Maximized;
             this.TopMost = true;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.ShowInTaskbar = false;
             this.BackColor = Color.FromArgb(18, 18, 18);
+            this.DoubleBuffered = true;
 
             this.KeyPreview = true;
             this.KeyDown += QuizForm_KeyDown;
             this.Resize += QuizForm_Resize;
 
-            // Card panel in the middle
-            _card = new Panel
+            _card = new RoundedPanel
             {
                 BackColor = Color.FromArgb(32, 32, 32),
-                Size = new Size(640, 360)
+                Size = new Size(700, 380)
             };
 
             _lblTitle = new Label
@@ -74,30 +136,28 @@ namespace MathQuizLocker
             _btnSubmit = new Button
             {
                 Text = "OK",
-                Font = new Font("Segoe UI", 18, FontStyle.Bold),  // a bit smaller
-                Width = 130,                                      // was 160
-                Height = 50,                                      // was 60
+                Font = new Font("Segoe UI", 18, FontStyle.Bold),
+                Width = 130,
+                Height = 50,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(0, 122, 204),
                 ForeColor = Color.White,
                 Cursor = Cursors.Hand
             };
-
             _btnSubmit.FlatAppearance.BorderSize = 0;
             _btnSubmit.Click += BtnSubmit_Click;
 
             _lblHint = new Label
             {
                 Text = "Solve the multiplication to continue.",
-                ForeColor = Color.FromArgb(180, 180, 180),
-                Font = new Font("Segoe UI", 14, FontStyle.Regular),   // was 12 + Italic
+                ForeColor = Color.FromArgb(200, 200, 200),
+                Font = new Font("Segoe UI", 14, FontStyle.Regular),
                 AutoSize = true,
-                MaximumSize = new Size(_card.Width - 60, 0)
+                MaximumSize = new Size(_card.Width - 60, 0),
+                TextAlign = ContentAlignment.MiddleCenter 
             };
 
 
-
-            // Add controls to card, then card to form
             _card.Controls.Add(_lblTitle);
             _card.Controls.Add(_lblQuestion);
             _card.Controls.Add(_txtAnswer);
@@ -116,11 +176,10 @@ namespace MathQuizLocker
 
         private void LayoutCard()
         {
-            // Recompute max width for the hint in case card size changed
             _lblHint.MaximumSize = new Size(_card.Width - 60, 0);
 
             int marginX = 40;
-            int y = 20;
+            int y = 30;
 
             // Title
             _lblTitle.Location = new Point(
@@ -129,12 +188,13 @@ namespace MathQuizLocker
             );
             y += _lblTitle.Height + 25;
 
-            // Question
+            // Question (centered)
             _lblQuestion.Location = new Point(
-                marginX,
+                (_card.Width - _lblQuestion.Width) / 2,
                 y
             );
             y += _lblQuestion.Height + 25;
+
 
             // Answer textbox
             _txtAnswer.Location = new Point(
@@ -148,25 +208,22 @@ namespace MathQuizLocker
                 (_card.Width - _btnSubmit.Width) / 2,
                 y
             );
-            y += _btnSubmit.Height + 20;
+            y += _btnSubmit.Height + 25;
 
-            // Hint (can be multi-line)
+            // Hint (multi-line possible)
             _lblHint.Location = new Point(
                 (_card.Width - _lblHint.Width) / 2,
                 y
             );
             y += _lblHint.Height + 20;
 
-            // Make sure card is tall enough for everything + some padding
-            _card.Height = Math.Max(y, 260);
+            _card.Height = Math.Max(y, 280);
 
-            // Center the card on screen after sizing
             _card.Location = new Point(
                 (this.ClientSize.Width - _card.Width) / 2,
                 (this.ClientSize.Height - _card.Height) / 2
             );
         }
-
 
         private void GenerateQuestion()
         {
@@ -188,7 +245,7 @@ namespace MathQuizLocker
             _txtAnswer.Text = "";
             _txtAnswer.Focus();
 
-            // Do NOT reset _lblHint here – we want feedback to stay visible.
+            // Keep previous hint visible
             LayoutCard();
         }
 
@@ -207,7 +264,6 @@ namespace MathQuizLocker
                 return;
             }
 
-            // Capture current question before we possibly generate a new one
             int currentA = _a;
             int currentB = _b;
             int correct = currentA * currentB;
@@ -229,12 +285,9 @@ namespace MathQuizLocker
                     _lblHint.Text = $"Correct! {currentA} × {currentB} = {correct}.";
                     GenerateQuestion();
                 }
-
             }
             else
             {
-                // Show what they answered and the correct result,
-                // then immediately give a NEW question so they can’t just retype it.
                 _lblHint.Text = $"Wrong: you answered {answer}, but {currentA} × {currentB} = {correct}. New question:";
                 GenerateQuestion();
             }
@@ -254,16 +307,27 @@ namespace MathQuizLocker
 
         private void QuizForm_KeyDown(object? sender, KeyEventArgs e)
         {
+            // Hidden developer hotkey: Ctrl + Shift + Alt + M
+            if (_settings.EnableDeveloperHotkey &&
+                e.Control && e.Shift && e.Alt && e.KeyCode == Keys.M)
+            {
+                e.Handled = true;
+                Environment.Exit(0); // kill the whole app
+                return;
+            }
+
             // Block Alt+F4
             if (e.Alt && e.KeyCode == Keys.F4)
             {
                 e.Handled = true;
+                return;
             }
 
             // Block Escape
             if (e.KeyCode == Keys.Escape)
             {
                 e.Handled = true;
+                return;
             }
 
             // Enter submits
@@ -271,6 +335,7 @@ namespace MathQuizLocker
             {
                 e.Handled = true;
                 BtnSubmit_Click(this, EventArgs.Empty);
+                return;
             }
         }
 
