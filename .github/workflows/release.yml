@@ -1,0 +1,44 @@
+name: Release MathQuizLocker
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        # Match this to your <TargetFramework> (e.g. net10.0-windows -> 10.0.x)
+        dotnet-version: '10.0.x'
+
+    - name: Restore
+      run: dotnet restore MathQuizLocker.csproj
+
+    - name: Build (Release)
+      run: dotnet build MathQuizLocker.csproj --configuration Release --no-restore
+
+    - name: Publish self-contained build
+      run: dotnet publish MathQuizLocker.csproj -c Release -o publish --no-build
+
+    - name: Create ZIP package
+      run: |
+        powershell -Command "Compress-Archive -Path publish\* -DestinationPath MathQuizLocker-win.zip -Force"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: MathQuizLocker ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        files: MathQuizLocker-win.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
