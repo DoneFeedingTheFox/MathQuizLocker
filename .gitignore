@@ -1,0 +1,23 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+*.userprefs
+
+# Visual Studio
+.vs/
+
+# Compiled DLLs
+*.dll
+*.exe
+*.pdb
+
+# Logs
+*.log
+
+# Cache
+*.cache/
