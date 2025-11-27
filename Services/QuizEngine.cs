@@ -98,28 +98,36 @@ namespace MathQuizLocker.Services
             fact.LastAsked = DateTime.Now;
         }
 
-        /// <summary>
-        /// Unlock next row when user has mastered enough of current rows.
-        /// For example:
-        ///  - Start: MaxFactorUnlocked = 1 -> 1×1..1×10
-        ///  - After mastery: MaxFactorUnlocked = 2 -> 1×1..2×10
-        /// </summary>
-        private bool ShouldUnlockNextLevel()
-        {
-            var allFacts = _settings.Progress.Values
-                .Where(p => p.A <= _settings.MaxFactorUnlocked && p.A <= MaxRowFactor && p.B <= MaxColFactor)
-                .ToList();
+		/// <summary>
+		/// Unlock next row when user has mastered enough of current rows.
+		/// For example:
+		///  - Start: MaxFactorUnlocked = 1 -> 1×1..1×10
+		///  - After mastery: MaxFactorUnlocked = 2 -> 1×1..2×10
+		/// </summary>
+		private bool ShouldUnlockNextLevel()
+		{
+			var allFacts = _settings.Progress.Values
+				.Where(p => p.A <= _settings.MaxFactorUnlocked && p.A <= MaxRowFactor && p.B <= MaxColFactor)
+				.ToList();
 
-            if (allFacts.Count == 0)
-                return false;
+			if (allFacts.Count == 0)
+				return false;
 
-            int mastered = allFacts.Count(p => p.CurrentStreak >= 3 && p.IncorrectCount == 0);
-            double ratio = (double)mastered / allFacts.Count;
+			const int requiredStreak = 3;
+			const double requiredRatio = 0.6; // 60% of facts in current level
 
-            return ratio >= 0.8 && _settings.MaxFactorUnlocked < MaxRowFactor;
-        }
+			int mastered = allFacts.Count(p =>
+				p.CurrentStreak >= requiredStreak &&
+				(p.CorrectCount + p.IncorrectCount) > 0  // has been asked at least once
+			);
 
-        private void MaybeUnlockNextLevel()
+			double ratio = (double)mastered / allFacts.Count;
+
+			return ratio >= requiredRatio && _settings.MaxFactorUnlocked < MaxRowFactor;
+		}
+
+
+		private void MaybeUnlockNextLevel()
         {
             if (ShouldUnlockNextLevel())
             {

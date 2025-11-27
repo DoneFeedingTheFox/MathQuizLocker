@@ -2,6 +2,7 @@
 bin/
 obj/
 publish/
+mathlock.settings.json
 
 
 # User-specific files
@@ -9,6 +10,7 @@ publish/
 *.rsuser
 *.suo
 *.userprefs
+
 
 # Visual Studio
 .vs/
