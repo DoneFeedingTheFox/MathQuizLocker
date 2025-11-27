@@ -1,6 +1,8 @@
-﻿using System;
+﻿using MathQuizLocker.Models;
+using System;
 using System.IO;
 using System.Text.Json;
+using System.Collections.Generic;
 
 namespace MathQuizLocker
 {
@@ -13,6 +15,17 @@ namespace MathQuizLocker
         public bool ShowQuizOnStartup { get; set; } = true;
         public bool LockOnWakeFromSleep { get; set; } = true;
         public bool EnableDeveloperHotkey { get; set; } = true;
+
+        /// <summary>
+        /// Highest factor currently unlocked (1 = only 1x1..1x1, 2 = 1x1..2x2, etc.)
+        /// </summary>
+        public int MaxFactorUnlocked { get; set; } = 1;
+
+        /// <summary>
+        /// Progress for each multiplication fact, key like "2x3".
+        /// </summary>
+        public Dictionary<string, FactProgress> Progress { get; set; }
+            = new Dictionary<string, FactProgress>();
 
 
         public static string GetConfigPath()
@@ -39,7 +52,16 @@ namespace MathQuizLocker
                     json,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                return settings ?? new AppSettings();
+                settings ??= new AppSettings();
+
+                settings.Progress ??= new Dictionary<string, FactProgress>();
+                if (settings.MaxFactorUnlocked < 1)
+                    settings.MaxFactorUnlocked = 1;
+                if (settings.MaxFactorUnlocked > 10)
+                    settings.MaxFactorUnlocked = 10;
+
+
+                return settings;
             }
             catch
             {

@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using MathQuizLocker.Services;   // <-- for QuizEngine
 
 namespace MathQuizLocker
 {
@@ -50,8 +51,6 @@ namespace MathQuizLocker
             }
         }
 
-
-
         private GraphicsPath GetRoundedRect(Rectangle rect, int radius)
         {
             GraphicsPath path = new GraphicsPath();
@@ -68,10 +67,12 @@ namespace MathQuizLocker
 
     public class QuizForm : Form
     {
-        private readonly Random _rnd = new Random();
         private readonly AppSettings _settings;
+        private readonly QuizEngine _quizEngine;
 
+        // Current question (for display + per-session counter)
         private int _a, _b;
+        private (int a, int b) _currentQuestion;
         private int _correctCount = 0;
         private bool _solved = false;
 
@@ -85,6 +86,7 @@ namespace MathQuizLocker
         public QuizForm(AppSettings settings)
         {
             _settings = settings ?? new AppSettings();
+            _quizEngine = new QuizEngine(_settings);
 
             InitializeUi();
             GenerateQuestion();
@@ -154,9 +156,8 @@ namespace MathQuizLocker
                 Font = new Font("Segoe UI", 14, FontStyle.Regular),
                 AutoSize = true,
                 MaximumSize = new Size(_card.Width - 60, 0),
-                TextAlign = ContentAlignment.MiddleCenter 
+                TextAlign = ContentAlignment.MiddleCenter
             };
-
 
             _card.Controls.Add(_lblTitle);
             _card.Controls.Add(_lblQuestion);
@@ -178,7 +179,6 @@ namespace MathQuizLocker
         {
             _lblHint.MaximumSize = new Size(_card.Width - 60, 0);
 
-            int marginX = 40;
             int y = 30;
 
             // Title
@@ -194,7 +194,6 @@ namespace MathQuizLocker
                 y
             );
             y += _lblQuestion.Height + 25;
-
 
             // Answer textbox
             _txtAnswer.Location = new Point(
@@ -227,27 +226,44 @@ namespace MathQuizLocker
 
         private void GenerateQuestion()
         {
-            int min = Math.Min(_settings.MinOperand, _settings.MaxOperand);
-            int max = Math.Max(_settings.MinOperand, _settings.MaxOperand);
-
-            if (min < 1) min = 1;
-            if (max < 1) max = 1;
-
-            _a = _rnd.Next(min, max + 1);
-            _b = _rnd.Next(min, max + 1);
-
             int required = _settings.RequiredCorrectAnswers > 0
                 ? _settings.RequiredCorrectAnswers
                 : 10;
+
+            // Remember previous question
+            var previous = _currentQuestion;
+
+            // Try a few times to get a *different* question than last time
+            for (int i = 0; i < 5; i++)
+            {
+                var candidate = _quizEngine.GetNextQuestion();
+
+                // If it's different from the previous one, accept it
+                if (candidate.a != previous.a || candidate.b != previous.b)
+                {
+                    _currentQuestion = candidate;
+                    break;
+                }
+
+                // On the last attempt, accept whatever we got (to avoid infinite loops
+                // in weird edge cases with very few available facts)
+                if (i == 4)
+                {
+                    _currentQuestion = candidate;
+                }
+            }
+
+            _a = _currentQuestion.a;
+            _b = _currentQuestion.b;
 
             _lblQuestion.Text = $"({_correctCount}/{required})  What is {_a} × {_b}?";
 
             _txtAnswer.Text = "";
             _txtAnswer.Focus();
 
-            // Keep previous hint visible
             LayoutCard();
         }
+
 
         private void BtnSubmit_Click(object? sender, EventArgs e)
         {
@@ -268,14 +284,21 @@ namespace MathQuizLocker
             int currentB = _b;
             int correct = currentA * currentB;
 
-            if (answer == correct)
+            // Ask QuizEngine to record this answer + update difficulty
+            bool isCorrect = _quizEngine.SubmitAnswer(answer);
+
+            if (isCorrect)
             {
                 _correctCount++;
+
+                // Save progress after each correct answer
+                AppSettings.Save(_settings);
 
                 if (_correctCount >= required)
                 {
                     _lblHint.Text = $"Correct! {currentA} × {currentB} = {correct}. Unlocking...";
                     _solved = true;
+
                     LayoutCard();
                     this.Close();
                     return;
@@ -288,6 +311,9 @@ namespace MathQuizLocker
             }
             else
             {
+                // Save progress after wrong answer too (so mistakes are remembered)
+                AppSettings.Save(_settings);
+
                 _lblHint.Text = $"Wrong: you answered {answer}, but {currentA} × {currentB} = {correct}. New question:";
                 GenerateQuestion();
             }
@@ -299,6 +325,7 @@ namespace MathQuizLocker
         {
             if (!_solved && e.CloseReason == CloseReason.UserClosing)
             {
+                // Prevent user from closing the form with mouse / Alt+F4 etc.
                 e.Cancel = true;
             }
 
