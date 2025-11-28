@@ -27,6 +27,9 @@ namespace MathQuizLocker
         public Dictionary<string, FactProgress> Progress { get; set; }
             = new Dictionary<string, FactProgress>();
 
+        // ✅ New: knight / XP progress
+        public PlayerProgress PlayerProgress { get; set; } = new PlayerProgress();
+
 
         public static string GetConfigPath()
         {
@@ -60,6 +63,8 @@ namespace MathQuizLocker
                 if (settings.MaxFactorUnlocked > 10)
                     settings.MaxFactorUnlocked = 10;
 
+                // ✅ Make sure PlayerProgress is never null
+                settings.PlayerProgress ??= new PlayerProgress();
 
                 return settings;
             }
