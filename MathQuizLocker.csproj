@@ -13,4 +13,11 @@
     <Company>BYOM</Company>
   </PropertyGroup>
 
+  <!-- Copy all graphics from GFX\... into the build output (bin\...\Assets\...) -->
+  <ItemGroup>
+    <Content Include="Assets\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
