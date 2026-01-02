@@ -318,8 +318,6 @@ namespace MathQuizLocker
             };
 
             _txtWrapper.Controls.Add(_txtAnswer);
-
-            // Center the textbox inside the wrapper (and we'll re-center in LayoutCard too)
             CenterControlInParent(_txtAnswer, _txtWrapper);
 
             _btnSubmit = new Button
@@ -329,23 +327,21 @@ namespace MathQuizLocker
                 Width = 220,
                 Height = 70,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(210, 170, 70),     // golden base
-                ForeColor = Color.FromArgb(35, 25, 10),       // dark brown text
+                BackColor = Color.FromArgb(210, 170, 70),
+                ForeColor = Color.FromArgb(35, 25, 10),
                 Cursor = Cursors.Hand
             };
 
             _btnSubmit.FlatAppearance.BorderSize = 2;
-            _btnSubmit.FlatAppearance.BorderColor = Color.FromArgb(140, 100, 30);  // darker gold edge
+            _btnSubmit.FlatAppearance.BorderColor = Color.FromArgb(140, 100, 30);
 
             _btnSubmit.Click += BtnSubmit_Click;
             _btnSubmit.Paint += BtnSubmit_Paint;
 
-            // Important: fixed rounded region path + reapply on size changes
             MakeButtonRounded(_btnSubmit, 20);
 
-            _btnSubmit.FlatAppearance.MouseOverBackColor = Color.FromArgb(230, 190, 90); // lighter on hover
-            _btnSubmit.FlatAppearance.MouseDownBackColor = Color.FromArgb(180, 140, 55); // darker on click
-
+            _btnSubmit.FlatAppearance.MouseOverBackColor = Color.FromArgb(230, 190, 90);
+            _btnSubmit.FlatAppearance.MouseDownBackColor = Color.FromArgb(180, 140, 55);
             _btnSubmit.TabStop = false;
 
             // --- Ability buttons ---
@@ -359,7 +355,8 @@ namespace MathQuizLocker
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(60, 60, 60),
                 ForeColor = Color.White,
-                Visible = false
+                Visible = false,
+                UseVisualStyleBackColor = false
             };
             _btnHint.FlatAppearance.BorderSize = 0;
             _btnHint.Click += BtnHint_Click;
@@ -372,7 +369,8 @@ namespace MathQuizLocker
                 Height = 32,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(120, 60, 60),
-                ForeColor = Color.White
+                ForeColor = Color.White,
+                UseVisualStyleBackColor = false
             };
             _btnUseToken.FlatAppearance.BorderSize = 0;
             _btnUseToken.Click += BtnUseToken_Click;
@@ -386,7 +384,8 @@ namespace MathQuizLocker
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(50, 80, 120),
                 ForeColor = Color.White,
-                Visible = false
+                Visible = false,
+                UseVisualStyleBackColor = false
             };
             _btnMathSight.FlatAppearance.BorderSize = 0;
             _btnMathSight.Click += BtnMathSight_Click;
@@ -400,7 +399,8 @@ namespace MathQuizLocker
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(80, 80, 80),
                 ForeColor = Color.White,
-                Visible = false
+                Visible = false,
+                UseVisualStyleBackColor = false
             };
             _btnSkip.FlatAppearance.BorderSize = 0;
             _btnSkip.Click += BtnSkip_Click;
@@ -414,7 +414,8 @@ namespace MathQuizLocker
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(100, 80, 40),
                 ForeColor = Color.White,
-                Visible = false
+                Visible = false,
+                UseVisualStyleBackColor = false
             };
             _btnPowerStrike.FlatAppearance.BorderSize = 0;
             _btnPowerStrike.Click += BtnPowerStrike_Click;
@@ -428,7 +429,8 @@ namespace MathQuizLocker
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(40, 100, 40),
                 ForeColor = Color.White,
-                Visible = false
+                Visible = false,
+                UseVisualStyleBackColor = false
             };
             _btnXpBoost.FlatAppearance.BorderSize = 0;
             _btnXpBoost.Click += BtnXpBoost_Click;
@@ -442,7 +444,8 @@ namespace MathQuizLocker
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(120, 100, 0),
                 ForeColor = Color.White,
-                Visible = false
+                Visible = false,
+                UseVisualStyleBackColor = false
             };
             _btnValor.FlatAppearance.BorderSize = 0;
             _btnValor.Click += BtnValor_Click;
@@ -480,21 +483,25 @@ namespace MathQuizLocker
             LayoutCard();
         }
 
+        /// <summary>
+        /// Bottom-anchored right column so buttons never drop below the ornate border,
+        /// plus forced Z-order so buttons are not hidden behind the knight PictureBox.
+        /// </summary>
         private void LayoutCard()
         {
             if (_card == null) return;
 
             int padding = 60;
 
-            // Right column (knight + abilities)
+            // Right column geometry
             int rightColumnWidth = 360;
+            int rightColumnSafeWidth = rightColumnWidth - 40; // safe horizontal width inside ornaments
             int rightXCenter = _card.Width - padding - rightColumnWidth / 2;
 
-            // Left inner area (big question area)
+            // Left column geometry
             int innerLeft = padding;
             int innerRight = _card.Width - rightColumnWidth - padding;
             int innerTop = padding + 50;
-            int innerBottom = _card.Height - padding;
 
             int leftColumnWidth = innerRight - innerLeft;
             int leftXCenter = innerLeft + leftColumnWidth / 2;
@@ -505,23 +512,20 @@ namespace MathQuizLocker
             _lblHint.Location = new Point(leftXCenter - _lblHint.Width / 2, y);
             y = _lblHint.Bottom + 30;
 
-            // make the question label span the whole left column and center inside itself
             _lblQuestion.Width = leftColumnWidth;
             _lblQuestion.Location = new Point(innerLeft, y);
-            _lblQuestion.Height = 60;   // enough for the 28pt text
+            _lblQuestion.Height = 60;
 
             y = _lblQuestion.Bottom + 30;
 
             _txtWrapper.Location = new Point(leftXCenter - _txtWrapper.Width / 2, y);
-
-            // Re-center the textbox inside wrapper (helps with DPI/font differences)
             CenterControlInParent(_txtAnswer, _txtWrapper);
 
             y = _txtWrapper.Bottom + 25;
 
             _btnSubmit.Location = new Point(leftXCenter - _btnSubmit.Width / 2, y);
 
-            // RIGHT COLUMN — Knight, Level, XP Bar, Abilities
+            // RIGHT COLUMN — Knight at top (fixed)
             int rightTop = innerTop + 10;
 
             _picKnight.Location = new Point(
@@ -529,40 +533,94 @@ namespace MathQuizLocker
                 rightTop
             );
 
-            _lblLevel.Location = new Point(
-                rightXCenter - _lblLevel.Width / 2,
-                _picKnight.Bottom + 10
-            );
+            // Bottom safe line inside the ornate panel border (tune if needed)
+            int safeBottom = _card.Height - padding - 70;
 
-            _xpBar.Width = rightColumnWidth - 120;
-            _xpBar.Height = 22;
-            _xpBar.Location = new Point(
-                rightXCenter - _xpBar.Width / 2,
-                _lblLevel.Bottom + 12
-            );
-
-            int currentRowY = _xpBar.Bottom + 18;
+            int curBottomY = safeBottom;
             int rowGapY = 12;
 
-            LayoutAbilityRow(new[] { _btnHint, _btnUseToken, _btnMathSight },
-                rightXCenter, ref currentRowY, rowGapY);
-
-            LayoutAbilityRow(new[] { _btnSkip, _btnPowerStrike, _btnXpBoost },
-                rightXCenter, ref currentRowY, rowGapY);
-
+            // Valor (single, bottommost)
             if (_btnValor.Visible)
             {
-                _btnValor.Location = new Point(
-                    rightXCenter - _btnValor.Width / 2,
-                    currentRowY
-                );
+                _btnValor.Location = new Point(rightXCenter - _btnValor.Width / 2, curBottomY - _btnValor.Height);
+                curBottomY = _btnValor.Top - rowGapY;
             }
+
+            // Ability rows (wrap + layout from bottom->top)
+            curBottomY = LayoutAbilityRowWrapUp(
+                new[] { _btnSkip, _btnPowerStrike, _btnXpBoost },
+                rightXCenter, rightColumnSafeWidth, curBottomY, rowGapY);
+
+            curBottomY = LayoutAbilityRowWrapUp(
+                new[] { _btnHint, _btnUseToken, _btnMathSight },
+                rightXCenter, rightColumnSafeWidth, curBottomY, rowGapY);
+
+            // XP bar
+            _xpBar.Width = rightColumnWidth - 120;
+            _xpBar.Height = 26;
+            _xpBar.Location = new Point(
+                rightXCenter - _xpBar.Width / 2,
+                curBottomY - _xpBar.Height
+            );
+            curBottomY = _xpBar.Top - rowGapY;
+
+            // Level label
+            _lblLevel.Location = new Point(
+                rightXCenter - _lblLevel.Width / 2,
+                curBottomY - _lblLevel.Height
+            );
+
+            // If the bottom-anchored block collides with the knight, try to push the block DOWN
+            // (only if there is room before safeBottom).
+            int minAllowedTop = _picKnight.Bottom + 8;
+            if (_lblLevel.Top < minAllowedTop)
+            {
+                int neededDown = minAllowedTop - _lblLevel.Top;
+
+                int blockBottom = GetBottomMost(
+                    _lblLevel, _xpBar,
+                    _btnHint, _btnUseToken, _btnMathSight,
+                    _btnSkip, _btnPowerStrike, _btnXpBoost,
+                    _btnValor
+                );
+
+                if (blockBottom + neededDown <= safeBottom)
+                {
+                    ShiftControlsY(-neededDown,
+                        _lblLevel, _xpBar,
+                        _btnHint, _btnUseToken, _btnMathSight,
+                        _btnSkip, _btnPowerStrike, _btnXpBoost,
+                        _btnValor
+                    );
+                }
+            }
+
+            // FORCE Z-ORDER: ensure buttons/labels are on top of the knight picture
+            BringRightColumnToFront();
 
             // Center the entire panel on screen
             _card.Location = new Point(
                 (this.ClientSize.Width - _card.Width) / 2,
                 (this.ClientSize.Height - _card.Height) / 2
             );
+        }
+
+        private void BringRightColumnToFront()
+        {
+            // Knight should be behind right-side UI
+            _picKnight.SendToBack();
+
+            _lblLevel.BringToFront();
+            _xpBar.BringToFront();
+
+            _btnHint.BringToFront();
+            _btnUseToken.BringToFront();
+            _btnMathSight.BringToFront();
+
+            _btnSkip.BringToFront();
+            _btnPowerStrike.BringToFront();
+            _btnXpBoost.BringToFront();
+            _btnValor.BringToFront();
         }
 
         private static void CenterControlInParent(Control child, Control parent)
@@ -573,23 +631,83 @@ namespace MathQuizLocker
             );
         }
 
-        private void LayoutAbilityRow(Button[] buttons, int centerX, ref int currentY, int gapY)
+        private static int GetBottomMost(params Control[] controls)
+        {
+            int bottom = int.MinValue;
+            foreach (var c in controls)
+            {
+                if (c != null && c.Visible)
+                    bottom = Math.Max(bottom, c.Bottom);
+            }
+            return bottom == int.MinValue ? 0 : bottom;
+        }
+
+        private static void ShiftControlsY(int deltaY, params Control[] controls)
+        {
+            if (deltaY == 0) return;
+            foreach (var c in controls)
+            {
+                if (c != null && c.Visible)
+                    c.Location = new Point(c.Left, c.Top - deltaY);
+            }
+        }
+
+        /// <summary>
+        /// Wraps visible buttons into lines within maxWidth, then lays those lines out upward (bottom->top),
+        /// returning the new bottomY above the placed block.
+        /// </summary>
+        private int LayoutAbilityRowWrapUp(Button[] buttons, int centerX, int maxWidth, int bottomY, int gapY)
         {
             var visible = buttons.Where(b => b.Visible).ToArray();
-            if (visible.Length == 0)
-                return;
+            if (visible.Length == 0) return bottomY;
 
-            int totalWidth = visible.Sum(b => b.Width) + (visible.Length - 1) * 10;
-            int startX = centerX - totalWidth / 2;
-            int x = startX;
+            const int gapX = 10;
+
+            // Build lines first (wrap by width)
+            var lines = new System.Collections.Generic.List<System.Collections.Generic.List<Button>>();
+            var current = new System.Collections.Generic.List<Button>();
+            int lineWidth = 0;
 
             foreach (var b in visible)
             {
-                b.Location = new Point(x, currentY);
-                x += b.Width + 10;
+                int add = current.Count == 0 ? b.Width : (gapX + b.Width);
+
+                if (current.Count > 0 && lineWidth + add > maxWidth)
+                {
+                    lines.Add(current);
+                    current = new System.Collections.Generic.List<Button>();
+                    lineWidth = 0;
+                    add = b.Width;
+                }
+
+                current.Add(b);
+                lineWidth += add;
             }
 
-            currentY += visible[0].Height + gapY;
+            if (current.Count > 0)
+                lines.Add(current);
+
+            // Lay out lines from bottom to top
+            for (int li = lines.Count - 1; li >= 0; li--)
+            {
+                var line = lines[li];
+
+                int total = line.Sum(b => b.Width) + (line.Count - 1) * gapX;
+                int x = centerX - total / 2;
+
+                int lineHeight = line.Max(b => b.Height);
+                int topY = bottomY - lineHeight;
+
+                foreach (var b in line)
+                {
+                    b.Location = new Point(x, topY);
+                    x += b.Width + gapX;
+                }
+
+                bottomY = topY - gapY;
+            }
+
+            return bottomY;
         }
 
         private void MakeButtonRounded(Button btn, int radius = 10)
@@ -604,8 +722,6 @@ namespace MathQuizLocker
             }
 
             ApplyRegion();
-
-            // Re-apply if size changes (DPI changes / layout)
             btn.SizeChanged += (s, e) => ApplyRegion();
         }
 
@@ -613,39 +729,35 @@ namespace MathQuizLocker
         {
             var btn = (Button)sender!;
             var g = e.Graphics;
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
 
             Rectangle rect = new Rectangle(0, 0, btn.Width - 1, btn.Height - 1);
 
-            // Fantasy gold gradient
             using (var brush = new LinearGradientBrush(
                        rect,
-                       Color.FromArgb(230, 200, 90),   // top light gold
-                       Color.FromArgb(185, 150, 60),   // bottom deeper gold
+                       Color.FromArgb(230, 200, 90),
+                       Color.FromArgb(185, 150, 60),
                        LinearGradientMode.Vertical))
             {
                 g.FillRectangle(brush, rect);
             }
 
-            // Subtle inner shadow on top
             using (var shadow = new SolidBrush(Color.FromArgb(60, 0, 0, 0)))
             {
                 g.FillRectangle(shadow, new Rectangle(0, 0, btn.Width, btn.Height / 4));
             }
 
-            // Outer border
             using (var pen = new Pen(Color.FromArgb(120, 90, 40), 2))
             {
                 g.DrawRectangle(pen, rect);
             }
 
-            // Draw text centered
             TextRenderer.DrawText(
                 g,
                 btn.Text,
                 btn.Font,
                 rect,
-                Color.FromArgb(40, 30, 10),   // dark brown
+                Color.FromArgb(40, 30, 10),
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
             );
         }

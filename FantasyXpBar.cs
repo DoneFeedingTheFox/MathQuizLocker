@@ -1,142 +1,153 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using System.ComponentModel;
-
 
 namespace MathQuizLocker
 {
-	public class FantasyXpBar : Control
-	{
-		private int _value = 0;
-		private int _maximum = 100;
+    public class FantasyXpBar : Control
+    {
+        private int _maximum = 100;
+        private int _value = 0;
 
-		[Browsable(false)]
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-		public int Value
-		{
-			get => _value;
-			set
-			{
-				int v = Math.Max(0, Math.Min(value, _maximum));
-				if (v == _value) return;
-				_value = v;
-				Invalidate();
-			}
-		}
+        [DefaultValue(100)]
+        public int Maximum
+        {
+            get => _maximum;
+            set
+            {
+                _maximum = Math.Max(1, value);
+                if (_value > _maximum) _value = _maximum;
+                Invalidate();
+            }
+        }
 
-		[Browsable(false)]
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-		public int Maximum
-		{
-			get => _maximum;
-			set
-			{
-				_maximum = Math.Max(1, value);
-				if (_value > _maximum) _value = _maximum;
-				Invalidate();
-			}
-		}
+        [DefaultValue(0)]
+        public int Value
+        {
+            get => _value;
+            set
+            {
+                _value = Math.Max(0, Math.Min(_maximum, value));
+                Invalidate();
+            }
+        }
 
+        public FantasyXpBar()
+        {
+            SetStyle(ControlStyles.UserPaint |
+                     ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
 
-		public FantasyXpBar()
-		{
-			DoubleBuffered = true;
-			Height = 18;
-			Width = 220;
-		}
+            BackColor = Color.Transparent;
+            ForeColor = Color.White;
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold);
 
-		protected override void OnPaint(PaintEventArgs e)
-		{
-			base.OnPaint(e);
+            Size = new Size(260, 22);
+        }
 
-			var g = e.Graphics;
-			g.SmoothingMode = SmoothingMode.AntiAlias;
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
 
-			Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
 
-			// Outer border (golden)
-			using (GraphicsPath borderPath = GetRoundedRect(rect, 8))
-			using (Pen borderPen = new Pen(Color.FromArgb(200, 160, 110), 2f))
-			{
-				g.FillPath(new SolidBrush(Color.FromArgb(40, 0, 0, 0)), borderPath); // subtle outer dark
-				g.DrawPath(borderPen, borderPath);
-			}
+            var outer = new Rectangle(0, 0, Width - 1, Height - 1);
 
-			// Inner area
-			Rectangle inner = new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6);
+            // safe inset so rounded edges never clip
+            int inset = 2;
+            var inner = Rectangle.Inflate(outer, -inset, -inset);
 
-			// Background
-			using (GraphicsPath bgPath = GetRoundedRect(inner, 6))
-			using (LinearGradientBrush bgBrush = new LinearGradientBrush(
-					   inner,
-					   Color.FromArgb(40, 40, 40),
-					   Color.FromArgb(20, 20, 20),
-					   LinearGradientMode.Vertical))
-			{
-				g.FillPath(bgBrush, bgPath);
-			}
+            int radius = Math.Max(6, inner.Height / 2);
 
-			// Fill based on Value
-			if (_maximum > 0 && _value > 0)
-			{
-				float pct = _value / (float)_maximum;
-				int fillWidth = (int)(inner.Width * pct);
-				if (fillWidth < 2) fillWidth = 2;
+            // Track + border colors
+            Color trackFill = Color.FromArgb(40, 40, 40);
+            Color trackBorder = Color.FromArgb(220, 220, 220);
 
-				Rectangle fillRect = new Rectangle(inner.X, inner.Y, fillWidth, inner.Height);
+            // Fill colors
+            Color fillA = Color.FromArgb(120, 230, 140); // top
+            Color fillB = Color.FromArgb(40, 180, 90);   // bottom
 
-				using (GraphicsPath fillPath = GetRoundedRect(fillRect, 6))
-				using (LinearGradientBrush fillBrush = new LinearGradientBrush(
-						   fillRect,
-						   Color.FromArgb(60, 200, 90),   // greenish
-						   Color.FromArgb(230, 210, 120), // gold
-						   LinearGradientMode.Horizontal))
-				{
-					g.FillPath(fillBrush, fillPath);
-				}
+            // 1) Track
+            using (var trackPath = CreateRoundRect(inner, radius))
+            using (var trackBrush = new SolidBrush(trackFill))
+            using (var borderPen = new Pen(trackBorder, 2f))
+            {
+                g.FillPath(trackBrush, trackPath);
+                g.DrawPath(borderPen, trackPath);
+            }
 
-				// subtle highlight
-				Rectangle highlight = new Rectangle(fillRect.X, fillRect.Y, fillRect.Width, fillRect.Height / 2);
-				using (GraphicsPath hlPath = GetRoundedRect(highlight, 6))
-				using (LinearGradientBrush hlBrush = new LinearGradientBrush(
-						   highlight,
-						   Color.FromArgb(80, Color.White),
-						   Color.FromArgb(0, Color.White),
-						   LinearGradientMode.Vertical))
-				{
-					g.FillPath(hlBrush, hlPath);
-				}
-			}
+            // 2) Fill
+            float pct = (_maximum <= 0) ? 0f : (float)_value / _maximum;
+            pct = Math.Max(0f, Math.Min(1f, pct));
 
-			// XP text overlay
-			string text = $"{_value}/{_maximum}";
-			using (var font = new Font("Segoe UI", 8, FontStyle.Bold))
-			using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-			using (var textBrush = new SolidBrush(Color.FromArgb(230, 230, 230)))
-			{
-				g.DrawString(text, font, textBrush, inner, sf);
-			}
-		}
+            // keep fill inside track border
+            var fillRect = Rectangle.Inflate(inner, -2, -2);
+            fillRect.Width = (int)Math.Round(fillRect.Width * pct);
 
-		private GraphicsPath GetRoundedRect(Rectangle r, int radius)
-		{
-			var path = new GraphicsPath();
-			int d = radius * 2;
+            if (fillRect.Width > 0)
+            {
+                // Ensure fill still has a rounded cap when very small
+                int minWidth = Math.Min(fillRect.Height, 16);
+                if (fillRect.Width < minWidth) fillRect.Width = minWidth;
 
-			if (d > r.Width) d = r.Width;
-			if (d > r.Height) d = r.Height;
+                using (var fillPath = CreateRoundRect(fillRect, fillRect.Height / 2))
+                using (var fillBrush = new LinearGradientBrush(fillRect, fillA, fillB, LinearGradientMode.Vertical))
+                {
+                    g.FillPath(fillBrush, fillPath);
+                }
+            }
 
-			path.AddArc(r.X, r.Y, d, d, 180, 90);
-			path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-			path.AddArc(r.X, r.Bottom - d, d, d, 0, 90);
-			path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-			path.CloseFigure();
+            // 3) Text — properly centered, DPI-safe
+            string text = $"{_value}/{_maximum}";
+            TextRenderer.DrawText(
+                g,
+                text,
+                Font,
+                inner,
+                ForeColor,
+                TextFormatFlags.HorizontalCenter |
+                TextFormatFlags.VerticalCenter |
+                TextFormatFlags.NoPadding |
+                TextFormatFlags.SingleLine
+            );
+        }
 
-			return path;
-		}
-	}
+        private static GraphicsPath CreateRoundRect(Rectangle r, int radius)
+        {
+            var path = new GraphicsPath();
+
+            if (radius <= 0)
+            {
+                path.AddRectangle(r);
+                path.CloseFigure();
+                return path;
+            }
+
+            int d = radius * 2;
+            if (d > r.Width) d = r.Width;
+            if (d > r.Height) d = r.Height;
+
+            var arc = new Rectangle(r.Location, new Size(d, d));
+
+            // TL
+            path.AddArc(arc, 180, 90);
+            // TR
+            arc.X = r.Right - d;
+            path.AddArc(arc, 270, 90);
+            // BR
+            arc.Y = r.Bottom - d;
+            path.AddArc(arc, 0, 90);
+            // BL
+            arc.X = r.Left;
+            path.AddArc(arc, 90, 90);
+
+            path.CloseFigure();
+            return path;
+        }
+    }
 }
