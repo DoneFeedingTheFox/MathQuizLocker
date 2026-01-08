@@ -7,16 +7,19 @@ namespace MathQuizLocker.Services
     {
         private static readonly string BaseDir = AppContext.BaseDirectory;
 
-        public static string GfxRoot =>
-            Path.Combine(BaseDir, "GFX");
+        // Points to the "Assets" folder shown in your screenshot
+        public static string AssetsRoot => Path.Combine(BaseDir, "Assets");
 
         public static string KnightSprite(int stage) =>
-            Path.Combine(GfxRoot, "KnightSprites", $"knight_stage_{stage}.png");
-
-        public static string KnightSprite(string fileName) =>
-            Path.Combine(GfxRoot, "KnightSprites", fileName);
+            Path.Combine(AssetsRoot, "KnightSprites", $"knight_stage_{stage}.png");
 
         public static string Background(string fileName) =>
-            Path.Combine(GfxRoot, "Background", fileName);
+            Path.Combine(AssetsRoot, "Backgrounds", fileName);
+
+        public static string Ui(string fileName) =>
+            Path.Combine(AssetsRoot, "UI", fileName);
+
+        public static string Dice(string fileName) =>
+        Path.Combine(AssetsRoot, "Dice", fileName);
     }
 }
