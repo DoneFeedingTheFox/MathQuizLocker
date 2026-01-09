@@ -21,6 +21,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\Dice\" />
+    <Folder Include="Assets\Monsters\" />
   </ItemGroup>
 
 </Project>

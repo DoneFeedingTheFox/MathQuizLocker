@@ -168,6 +168,18 @@ namespace MathQuizLocker.Services
             return candidates[^1];
         }
 
+        public void InitializeForCurrentLevel()
+        {
+            // Optional: Clear existing progress to ensure a truly fresh start
+            _settings.Progress.Clear();
+
+            // Ensure settings are within valid bounds
+            if (_settings.MaxFactorUnlocked < 1) _settings.MaxFactorUnlocked = 1;
+
+            // Repopulate with Level 1 facts
+            EnsureFactsForCurrentLevel();
+        }
+
         /// <summary>
         /// Higher weight = more likely to be asked.
         /// New or wrong facts are prioritized; mastered facts appear less often.

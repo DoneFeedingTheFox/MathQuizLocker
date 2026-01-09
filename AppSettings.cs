@@ -1,8 +1,6 @@
 ﻿using MathQuizLocker.Models;
-using System;
-using System.IO;
 using System.Text.Json;
-using System.Collections.Generic;
+
 
 namespace MathQuizLocker
 {
@@ -16,20 +14,12 @@ namespace MathQuizLocker
         public bool LockOnWakeFromSleep { get; set; } = true;
         public bool EnableDeveloperHotkey { get; set; } = true;
 
-        /// <summary>
-        /// Highest factor currently unlocked (1 = only 1x1..1x1, 2 = 1x1..2x2, etc.)
-        /// </summary>
         public int MaxFactorUnlocked { get; set; } = 1;
 
-        /// <summary>
-        /// Progress for each multiplication fact, key like "2x3".
-        /// </summary>
         public Dictionary<string, FactProgress> Progress { get; set; }
             = new Dictionary<string, FactProgress>();
 
-        // ✅ New: knight / XP progress
         public PlayerProgress PlayerProgress { get; set; } = new PlayerProgress();
-
 
         public static string GetConfigPath()
         {
@@ -56,14 +46,11 @@ namespace MathQuizLocker
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                 settings ??= new AppSettings();
-
                 settings.Progress ??= new Dictionary<string, FactProgress>();
-                if (settings.MaxFactorUnlocked < 1)
-                    settings.MaxFactorUnlocked = 1;
-                if (settings.MaxFactorUnlocked > 10)
-                    settings.MaxFactorUnlocked = 10;
 
-                // ✅ Make sure PlayerProgress is never null
+                if (settings.MaxFactorUnlocked < 1) settings.MaxFactorUnlocked = 1;
+                if (settings.MaxFactorUnlocked > 10) settings.MaxFactorUnlocked = 10;
+
                 settings.PlayerProgress ??= new PlayerProgress();
 
                 return settings;
@@ -72,6 +59,24 @@ namespace MathQuizLocker
             {
                 return new AppSettings();
             }
+        }
+
+        public void ResetProgress()
+        {
+            // 1. Reset the multiplication table difficulty
+            this.MaxFactorUnlocked = 1;
+            this.Progress = new Dictionary<string, FactProgress>();
+
+            // 2. Reset the knight / XP progress values
+            // I have removed TotalCorrectAnswers because it does not exist in your PlayerProgress class
+            this.PlayerProgress.Level = 1;
+            this.PlayerProgress.CurrentXp = 0;
+            this.PlayerProgress.TotalXp = 0; 
+            this.PlayerProgress.CheatTokens = 0;
+            this.PlayerProgress.UnlockedAbilities.Clear();
+
+            // 3. Save these changes
+            Save(this);
         }
 
         public static void Save(AppSettings settings)
