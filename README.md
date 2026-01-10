@@ -1,27 +1,27 @@
-# MathQuizLocker 🧮🔒
+# MathQuizLocker 🧮⚔️🛡️
 
-MathQuizLocker is a small Windows utility that **locks the screen behind a simple math quiz**.
+MathQuizLocker is a fantasy-themed Windows utility that **locks the screen behind a mathematical battle**.
 
-To continue using the PC, the user must correctly solve a number of multiplication questions (the “lille gangetabellen”).  
-It is designed as a light-weight “focus / practice” lock – ideal for kids or self-discipline, not as a security product.
+To continue using the PC, you must take up the mantle of a Knight and defeat monsters by solving multiplication problems (the “lille gangetabellen”). It is designed as a light-weight “focus / practice” lock – ideal for kids or self-discipline, not as a security product.
 
 ---
 
 ## ✨ Features
 
-- 🔢 **Multiplication quiz** (configurable range, e.g. 1–10)
-- ✅ Require a configurable number of **correct answers in a row**
-- 🖥️ **Fullscreen, borderless window** that sits on top of everything
+- ⚔️ **RPG Combat System**: Correct answers deal damage to monsters; incorrect answers result in the monster counter-attacking you.
+- 📈 **Knight Progression**: Earn XP to level up your Knight. Your character sprite evolves through 10 distinct stages of armor as you progress.
+- ⚖️ **Dynamic Penalty**: Damage taken for a wrong answer is exactly the **correct product** (e.g., failing $9 \times 9$ deals **81 damage**).
+- 🔢 **Smart Math Engine**:
+  - Automatically unlocks new rows of the multiplication table as you demonstrate mastery.
+  - Supports commutative variety (e.g., both $1 \times 5$ and $5 \times 1$ are asked).
+  - Anti-repetition logic prevents the same question from appearing twice in a row.
+- ✅ **Victory Flow**: Upon defeating a monster, choose to **Continue Fighting** for more XP or **Exit to Desktop**.
+- 🖥️ **Fullscreen, borderless window** that sits on top of everything.
 - ⏰ Optional lock:
   - at **Windows login**
   - when the PC **wakes from sleep / hibernate**
   - after a period of **inactivity**
-- 📝 Clear inline feedback:
-  - Shows whether the answer was correct
-  - Shows the correct result on wrong answers
-  - Immediately generates a **new question** so you can’t just copy the result
-- ⚙️ All behaviour controlled via a simple `mathlock.settings.json` file
-- 🧹 No pop-ups, all messages inside a clean centered “card” UI
+- ⚙️ All behaviour and player stats controlled via a simple `mathlock.settings.json` file.
 
 > ⚠️ **Important:** MathQuizLocker is *not* a security boundary.  
 > A knowledgeable user (or an admin account) can still bypass it using Task Manager, Safe Mode, etc.
@@ -31,8 +31,8 @@ It is designed as a light-weight “focus / practice” lock – ideal for kids 
 ## 🏗️ Requirements
 
 - Windows 10 / 11
-- .NET Desktop Runtime compatible with the project’s target (e.g. `.NET x.y-windows`)
-- A regular user account (admin recommended only for configuring startup / policies)
+- .NET 10.0 Desktop Runtime (Targeting `net10.0-windows`)
+- **Assets Folder**: The `Assets/` directory (Dice, KnightSprites, Monsters) must be in the same folder as the executable.
 
 ---
 
@@ -41,5 +41,5 @@ It is designed as a light-weight “focus / practice” lock – ideal for kids 
 Clone the repo:
 
 ```bash
-git clone https://github.com/<your-username>/MathQuizLocker.git
+git clone [https://github.com/DoneFeedingTheFox/MathQuizLocker.git](https://github.com/DoneFeedingTheFox/MathQuizLocker.git)
 cd MathQuizLocker
