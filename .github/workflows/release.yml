@@ -3,7 +3,7 @@ name: Release MathQuizLocker
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*'  # Only triggers when you push a tag like v1.3.3
 
 permissions:
   contents: write
@@ -28,14 +28,14 @@ jobs:
     - name: Build (Release)
       run: dotnet build MathQuizLocker.csproj --configuration Release --no-restore
 
-    - name: Publish self-contained build
+    - name: Publish for Velopack
+      # This MUST target win-x64 for the installer to work correctly
       run: dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build
 
     - name: Install Velopack CLI
       run: dotnet tool install -g vpk
 
     - name: Create Velopack Release
-      # Using a bash variable to strip the 'v' from the tag name (e.g., v1.3.2 -> 1.3.2)
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
@@ -48,6 +48,7 @@ jobs:
         name: MathQuizLocker ${{ github.ref_name }}
         draft: false
         prerelease: false
+        # IMPORTANT: We ONLY upload these three specific files
         files: |
           Releases/*.setup.exe
           Releases/*.nupkg
