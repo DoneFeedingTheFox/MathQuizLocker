@@ -23,5 +23,8 @@
     <Folder Include="Assets\Dice\" />
     <Folder Include="Assets\Monsters\" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="0.0.1298" />
+  </ItemGroup>
 
 </Project>
