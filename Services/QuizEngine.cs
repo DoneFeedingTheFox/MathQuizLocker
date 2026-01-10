@@ -5,213 +5,191 @@ using MathQuizLocker.Models;
 
 namespace MathQuizLocker.Services
 {
-    public class QuizEngine
-    {
-        private readonly AppSettings _settings;
-        private readonly Random _rng = new Random();
+	public class QuizEngine
+	{
+		private readonly AppSettings _settings;
+		private readonly Random _rng = new Random();
 
-        private FactProgress? _currentFact;
+		private FactProgress? _currentFact;
+		private string _lastFactKey = string.Empty; // Track last asked question
 
-        // We want the full "lille gangetabell"
-        private const int MaxRowFactor = 10; // rows: A = 1..10
-        private const int MaxColFactor = 10; // cols: B = 1..10
+		private const int MaxRowFactor = 10;
+		private const int MaxColFactor = 10;
 
-        public QuizEngine(AppSettings settings)
-        {
-            _settings = settings;
-            if (_settings.MaxFactorUnlocked < 1)
-                _settings.MaxFactorUnlocked = 1;
-            if (_settings.MaxFactorUnlocked > MaxRowFactor)
-                _settings.MaxFactorUnlocked = MaxRowFactor;
+		public QuizEngine(AppSettings settings)
+		{
+			_settings = settings;
+			if (_settings.MaxFactorUnlocked < 1)
+				_settings.MaxFactorUnlocked = 1;
+			if (_settings.MaxFactorUnlocked > MaxRowFactor)
+				_settings.MaxFactorUnlocked = MaxRowFactor;
 
-            EnsureFactsForCurrentLevel();
-        }
+			EnsureFactsForCurrentLevel();
+		}
 
-        private static string GetKey(int a, int b) => $"{a}x{b}";
-
-        /// <summary>
-        /// Make sure Progress contains entries for all unlocked facts.
-        /// Unlocks by row: 1×1..1×10, then 2×1..2×10, etc.
-        /// </summary>
-        private void EnsureFactsForCurrentLevel()
-        {
-            for (int a = 1; a <= _settings.MaxFactorUnlocked && a <= MaxRowFactor; a++)
-            {
-                for (int b = 1; b <= MaxColFactor; b++)
-                {
-                    string key = GetKey(a, b);
-                    if (!_settings.Progress.ContainsKey(key))
-                    {
-                        _settings.Progress[key] = new FactProgress
-                        {
-                            A = a,
-                            B = b,
-                            CorrectCount = 0,
-                            IncorrectCount = 0,
-                            CurrentStreak = 0,
-                            LastAsked = DateTime.MinValue
-                        };
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns the next question (a, b).
-        /// </summary>
-        public (int a, int b) GetNextQuestion()
-        {
-            var fact = PickNextFact();
-            _currentFact = fact;
-            return (fact.A, fact.B);
-        }
-
-        /// <summary>
-        /// Submit an answer for the current question. Returns true if correct.
-        /// </summary>
-        public bool SubmitAnswer(int userAnswer)
-        {
-            if (_currentFact == null)
-                throw new InvalidOperationException("No active question has been generated.");
-
-            bool isCorrect = userAnswer == _currentFact.A * _currentFact.B;
-
-            RegisterAnswer(_currentFact, isCorrect);
-            MaybeUnlockNextLevel();
-
-            return isCorrect;
-        }
-
-        private void RegisterAnswer(FactProgress fact, bool isCorrect)
-        {
-            if (isCorrect)
-            {
-                fact.CorrectCount++;
-                fact.CurrentStreak++;
-            }
-            else
-            {
-                fact.IncorrectCount++;
-                fact.CurrentStreak = 0;
-            }
-
-            fact.LastAsked = DateTime.Now;
-        }
+		private static string GetKey(int a, int b) => $"{a}x{b}";
 
 		/// <summary>
-		/// Unlock next row when user has mastered enough of current rows.
-		/// For example:
-		///  - Start: MaxFactorUnlocked = 1 -> 1×1..1×10
-		///  - After mastery: MaxFactorUnlocked = 2 -> 1×1..2×10
+		/// Unlocks facts in both directions (e.g., 1x5 AND 5x1)
 		/// </summary>
+		private void EnsureFactsForCurrentLevel()
+		{
+			int max = _settings.MaxFactorUnlocked;
+
+			for (int a = 1; a <= MaxRowFactor; a++)
+			{
+				for (int b = 1; b <= MaxColFactor; b++)
+				{
+					// Logic: Unlock if EITHER factor is within the unlocked range
+					if (a <= max || b <= max)
+					{
+						string key = GetKey(a, b);
+						if (!_settings.Progress.ContainsKey(key))
+						{
+							_settings.Progress[key] = new FactProgress
+							{
+								A = a,
+								B = b,
+								CorrectCount = 0,
+								IncorrectCount = 0,
+								CurrentStreak = 0,
+								LastAsked = DateTime.MinValue
+							};
+						}
+					}
+				}
+			}
+		}
+
+		public (int a, int b) GetNextQuestion()
+		{
+			var fact = PickNextFact();
+			_currentFact = fact;
+			_lastFactKey = GetKey(fact.A, fact.B); // Remember this key
+			return (fact.A, fact.B);
+		}
+
+		public bool SubmitAnswer(int userAnswer)
+		{
+			if (_currentFact == null)
+				throw new InvalidOperationException("No active question has been generated.");
+
+			bool isCorrect = userAnswer == _currentFact.A * _currentFact.B;
+
+			RegisterAnswer(_currentFact, isCorrect);
+			MaybeUnlockNextLevel();
+
+			return isCorrect;
+		}
+
+		private void RegisterAnswer(FactProgress fact, bool isCorrect)
+		{
+			if (isCorrect)
+			{
+				fact.CorrectCount++;
+				fact.CurrentStreak++;
+			}
+			else
+			{
+				fact.IncorrectCount++;
+				fact.CurrentStreak = 0;
+			}
+
+			fact.LastAsked = DateTime.Now;
+		}
+
 		private bool ShouldUnlockNextLevel()
 		{
 			var allFacts = _settings.Progress.Values
-				.Where(p => p.A <= _settings.MaxFactorUnlocked && p.A <= MaxRowFactor && p.B <= MaxColFactor)
+				.Where(p => (p.A <= _settings.MaxFactorUnlocked || p.B <= _settings.MaxFactorUnlocked)
+							&& p.A <= MaxRowFactor && p.B <= MaxColFactor)
 				.ToList();
 
-			if (allFacts.Count == 0)
-				return false;
+			if (allFacts.Count == 0) return false;
 
 			const int requiredStreak = 3;
-			const double requiredRatio = 0.6; // 60% of facts in current level
+			const double requiredRatio = 0.6;
 
 			int mastered = allFacts.Count(p =>
 				p.CurrentStreak >= requiredStreak &&
-				(p.CorrectCount + p.IncorrectCount) > 0  // has been asked at least once
+				(p.CorrectCount + p.IncorrectCount) > 0
 			);
 
 			double ratio = (double)mastered / allFacts.Count;
-
 			return ratio >= requiredRatio && _settings.MaxFactorUnlocked < MaxRowFactor;
 		}
 
-
 		private void MaybeUnlockNextLevel()
-        {
-            if (ShouldUnlockNextLevel())
-            {
-                _settings.MaxFactorUnlocked++;
-                EnsureFactsForCurrentLevel();
-            }
-        }
+		{
+			if (ShouldUnlockNextLevel())
+			{
+				_settings.MaxFactorUnlocked++;
+				EnsureFactsForCurrentLevel();
+			}
+		}
 
-        /// <summary>
-        /// Weighted random selection of the next fact.
-        /// Only uses unlocked rows (A <= MaxFactorUnlocked) and full B = 1..10.
-        /// </summary>
-        private FactProgress PickNextFact()
-        {
-            var candidates = _settings.Progress.Values
-                .Where(p => p.A <= _settings.MaxFactorUnlocked && p.A <= MaxRowFactor && p.B <= MaxColFactor)
-                .ToList();
+		private FactProgress PickNextFact()
+		{
+			var candidates = _settings.Progress.Values
+				.Where(p => (p.A <= _settings.MaxFactorUnlocked || p.B <= _settings.MaxFactorUnlocked))
+				.ToList();
 
-            if (candidates.Count == 0)
-                throw new InvalidOperationException("No facts available. Did you call EnsureFactsForCurrentLevel?");
+			if (candidates.Count == 0)
+				throw new InvalidOperationException("No facts available.");
 
-            var weights = candidates.Select(GetPriorityWeight).ToList();
-            double total = weights.Sum();
+			// Filter out the exact same question that was just asked
+			var selectionPool = candidates.Count > 1
+				? candidates.Where(p => GetKey(p.A, p.B) != _lastFactKey).ToList()
+				: candidates;
 
-            double r = _rng.NextDouble() * total;
-            double cumulative = 0.0;
+			var weights = selectionPool.Select(GetPriorityWeight).ToList();
+			double total = weights.Sum();
 
-            for (int i = 0; i < candidates.Count; i++)
-            {
-                cumulative += weights[i];
-                if (r <= cumulative)
-                {
-                    return candidates[i];
-                }
-            }
+			double r = _rng.NextDouble() * total;
+			double cumulative = 0.0;
 
-            // Fallback
-            return candidates[^1];
-        }
+			for (int i = 0; i < selectionPool.Count; i++)
+			{
+				cumulative += weights[i];
+				if (r <= cumulative) return selectionPool[i];
+			}
 
-        public void InitializeForCurrentLevel()
-        {
-            // Optional: Clear existing progress to ensure a truly fresh start
-            _settings.Progress.Clear();
+			return selectionPool[^1];
+		}
 
-            // Ensure settings are within valid bounds
-            if (_settings.MaxFactorUnlocked < 1) _settings.MaxFactorUnlocked = 1;
+		public void InitializeForCurrentLevel()
+		{
+			_settings.Progress.Clear();
+			if (_settings.MaxFactorUnlocked < 1) _settings.MaxFactorUnlocked = 1;
+			EnsureFactsForCurrentLevel();
+		}
 
-            // Repopulate with Level 1 facts
-            EnsureFactsForCurrentLevel();
-        }
+		private double GetPriorityWeight(FactProgress fact)
+		{
+			double weight = 1.0;
 
-        /// <summary>
-        /// Higher weight = more likely to be asked.
-        /// New or wrong facts are prioritized; mastered facts appear less often.
-        /// </summary>
-        private double GetPriorityWeight(FactProgress fact)
-        {
-            double weight = 1.0;
+			// 1. Reduced boost for new facts to allow older facts back in the mix
+			if (fact.CorrectCount == 0 && fact.IncorrectCount == 0)
+				weight += 2.0;
 
-            bool neverSeen = fact.CorrectCount == 0 && fact.IncorrectCount == 0;
-            if (neverSeen)
-            {
-                weight += 5.0; // new facts are very attractive
-            }
+			// 2. High priority for mistakes
+			weight += fact.IncorrectCount * 4.0;
 
-            // Errors count a lot
-            weight += fact.IncorrectCount * 3.0;
+			// 3. Streak reduces priority (Mastery)
+			weight -= fact.CurrentStreak * 1.5;
 
-            // Correct streak reduces weight
-            int cappedStreak = Math.Min(fact.CurrentStreak, 5);
-            weight -= cappedStreak * 0.8;
+			// 4. Anti-Repetition: Significantly reduce weight of recently asked questions
+			if (fact.LastAsked != DateTime.MinValue)
+			{
+				var secondsSince = (DateTime.Now - fact.LastAsked).TotalSeconds;
+				if (secondsSince < 45) // Penalize if seen in the last 45 seconds
+					weight *= 0.1;
 
-            // Recency: not asked for a while => small boost
-            if (fact.LastAsked != DateTime.MinValue)
-            {
-                var daysSince = (DateTime.Now - fact.LastAsked).TotalDays;
-                weight += Math.Min(daysSince, 5) * 0.3;
-            }
+				var minutesSince = (DateTime.Now - fact.LastAsked).TotalMinutes;
+				weight += Math.Min(minutesSince, 10) * 0.5;
+			}
 
-            if (weight < 0.2)
-                weight = 0.2;
-
-            return weight;
-        }
-    }
+			return Math.Max(weight, 0.1);
+		}
+	}
 }

@@ -69,7 +69,7 @@ namespace MathQuizLocker
 
             // 2. Reset the knight / XP progress values
             // I have removed TotalCorrectAnswers because it does not exist in your PlayerProgress class
-            this.PlayerProgress.Level = 1;
+            this.PlayerProgress.Level = 0;
             this.PlayerProgress.CurrentXp = 0;
             this.PlayerProgress.TotalXp = 0; 
             this.PlayerProgress.CheatTokens = 0;
