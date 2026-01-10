@@ -15,7 +15,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Required by Velopack to determine version history
+        fetch-depth: 0 
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -29,16 +29,17 @@ jobs:
       run: dotnet build MathQuizLocker.csproj --configuration Release --no-restore
 
     - name: Publish self-contained build
-      # Velopack works best with a specific RID (win-x64) for installers
       run: dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build
 
     - name: Install Velopack CLI
       run: dotnet tool install -g vpk
 
     - name: Create Velopack Release
-      # This generates the setup.exe, nupkg, and RELEASES manifest
+      # Using a bash variable to strip the 'v' from the tag name (e.g., v1.3.2 -> 1.3.2)
+      shell: bash
       run: |
-        vpk pack -u MathQuizLocker -v ${{ github.ref_name }} -p publish -e MathQuizLocker.exe
+        VERSION=${GITHUB_REF_NAME#v}
+        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
@@ -47,7 +48,6 @@ jobs:
         name: MathQuizLocker ${{ github.ref_name }}
         draft: false
         prerelease: false
-        # Upload the setup installer and the update manifest files
         files: |
           Releases/*.setup.exe
           Releases/*.nupkg
