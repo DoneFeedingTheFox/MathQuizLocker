@@ -48,7 +48,7 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          Releases/*.setup.exe
+          Releases/*Setup.exe
           Releases/*.nupkg
           Releases/RELEASES
       env:
