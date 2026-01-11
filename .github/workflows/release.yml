@@ -39,8 +39,7 @@ jobs:
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
-        # Added --framework net10-x64-desktop to bundle the runtime
-        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe -i icon.ico --framework net10-x64-desktop
+        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe -i icon.ico --selfconf
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
@@ -49,7 +48,6 @@ jobs:
         name: MathQuizLocker ${{ github.ref_name }}
         draft: false
         prerelease: false
-        # Uses the flexible pattern that caught your Setup.exe
         files: |
           Releases/*Setup.exe
           Releases/*.nupkg
