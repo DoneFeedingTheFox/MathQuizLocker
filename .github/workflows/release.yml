@@ -25,11 +25,17 @@ jobs:
     - name: Restore
       run: dotnet restore MathQuizLocker.csproj -r win-x64
 
-    - name: Build (Release)
-      run: dotnet build MathQuizLocker.csproj --configuration Release -r win-x64 --no-restore
-
-    - name: Publish for Velopack
-      run: dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build
+    - name: Build and Publish
+      shell: bash
+      run: |
+        # Extracts version from tag (e.g., v1.4.6 -> 1.4.6)
+        VERSION=${GITHUB_REF_NAME#v}
+        
+        # Build with injected version
+        dotnet build MathQuizLocker.csproj --configuration Release -r win-x64 --no-restore /p:Version=$VERSION
+        
+        # Publish with injected version
+        dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build /p:Version=$VERSION
 
     - name: Install Velopack CLI
       run: dotnet tool install -g vpk
@@ -47,6 +53,7 @@ jobs:
         name: MathQuizLocker ${{ github.ref_name }}
         draft: false
         prerelease: false
+        # Uses the flexible pattern that caught your Setup.exe
         files: |
           Releases/*Setup.exe
           Releases/*.nupkg
