@@ -11,26 +11,34 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 
+        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
 
-    - name: Restore
-      run: dotnet restore MathQuizLocker.csproj -r win-x64
-
-    - name: Build and Publish
+    - name: Publish (self-contained)
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
-        dotnet build MathQuizLocker.csproj -c Release -r win-x64 --no-restore "-p:Version=$VERSION"
-        dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build "-p:Version=$VERSION"
+        dotnet publish MathQuizLocker.csproj \
+          -c Release \
+          -r win-x64 \
+          --self-contained true \
+          -o publish \
+          "-p:Version=$VERSION"
+
+    - name: Verify publish is self-contained
+      shell: bash
+      run: |
+        ls -la publish | head -n 50
+        test -f publish/hostfxr.dll
 
     - name: Install Velopack CLI
       run: dotnet tool install -g vpk
@@ -39,7 +47,7 @@ jobs:
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
-        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe -i icon.ico -s win-x64
+        vpk pack -u MathQuizLocker -v "$VERSION" -p publish -e MathQuizLocker.exe -i icon.ico
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
