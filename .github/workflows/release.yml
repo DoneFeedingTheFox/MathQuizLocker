@@ -39,7 +39,7 @@ jobs:
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
-        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe -i icon.ico --selfconf
+        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe -i icon.ico --skipVeloAppCheck
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
