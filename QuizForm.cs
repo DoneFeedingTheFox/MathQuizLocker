@@ -86,6 +86,7 @@ namespace MathQuizLocker
 				if (e.KeyCode == Keys.Enter && _btnSubmit.Visible)
 				{
 					e.Handled = true;
+					e.SuppressKeyPress = true;
 					BtnSubmit_Click(null!, null!);
 				}
 			};
