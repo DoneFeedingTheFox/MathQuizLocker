@@ -47,6 +47,7 @@ jobs:
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
+        # vpk pack generates the .nupkg, Setup.exe, and releases.win.json
         vpk pack -u MathQuizLocker -v "$VERSION" -p publish -e MathQuizLocker.exe -i icon.ico
 
     - name: Create GitHub Release
@@ -56,9 +57,11 @@ jobs:
         name: MathQuizLocker ${{ github.ref_name }}
         draft: false
         prerelease: false
+        # UPDATED: Added Releases/*.json to include releases.win.json
         files: |
           Releases/*Setup.exe
           Releases/*.nupkg
+          Releases/*.json
           Releases/RELEASES
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
