@@ -10,7 +10,8 @@
     <AssemblyVersion>1.4.4.0</AssemblyVersion>
     <FileVersion>1.4.4.0</FileVersion>
     <Product>MathQuizLocker</Product>
-    <Company>BYOM</Company>
+    <Company>DoneFeedingTheFox</Company>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!-- Copy all graphics from GFX\... into the build output (bin\...\Assets\...) -->
@@ -25,6 +26,9 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Velopack" Version="0.0.1298" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="icon.ico" Pack="true" />
   </ItemGroup>
 
 </Project>
