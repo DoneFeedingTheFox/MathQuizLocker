@@ -35,12 +35,12 @@ jobs:
     - name: Install Velopack CLI
       run: dotnet tool install -g vpk
 
-    - name: Create Velopack Release
+- name: Create Velopack Release
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
-        # -i icon.ico tells Velopack to use your icon for the shortcuts
-        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe -i icon.ico
+        # Added --framework net10-x64-desktop to bundle the runtime
+        vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe -i icon.ico --framework net10-x64-desktop
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
