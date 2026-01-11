@@ -1,10 +1,11 @@
-# 1. Save and commit your code changes
 git add .
-git commit -m "Describe your changes here"
-
-# 2. Push the code to GitHub
+git commit -m "Fix: Add win-x64 RID to restore and build steps"
+git pull origin main --rebase
 git push origin main
 
-# 3. Create and push a new Version Tag (This triggers the Release workflow)
-git tag v1.3.1
-git push origin v1.3.1
+
+git tag v1.4.1
+git push origin v1.4.1
+
+
+
