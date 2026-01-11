@@ -35,7 +35,7 @@ jobs:
     - name: Install Velopack CLI
       run: dotnet tool install -g vpk
 
-- name: Create Velopack Release
+    - name: Create Velopack Release
       shell: bash
       run: |
         VERSION=${GITHUB_REF_NAME#v}
