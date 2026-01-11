@@ -28,14 +28,9 @@ jobs:
     - name: Build and Publish
       shell: bash
       run: |
-        # Extracts version from tag (e.g., v1.4.6 -> 1.4.6)
         VERSION=${GITHUB_REF_NAME#v}
-        
-        # Build with injected version
-        dotnet build MathQuizLocker.csproj --configuration Release -r win-x64 --no-restore "/p:Version=$VERSION"
-        
-        # Publish with injected version
-        dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build "/p:Version=$VERSION"
+        dotnet build MathQuizLocker.csproj -c Release -r win-x64 --no-restore "-p:Version=$VERSION"
+        dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build "-p:Version=$VERSION"
 
     - name: Install Velopack CLI
       run: dotnet tool install -g vpk
