@@ -3,7 +3,7 @@ name: Release MathQuizLocker
 on:
   push:
     tags:
-      - 'v*'  # Only triggers when you push a tag like v1.3.3
+      - 'v*'
 
 permissions:
   contents: write
@@ -23,13 +23,12 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Restore
-      run: dotnet restore MathQuizLocker.csproj
+      run: dotnet restore MathQuizLocker.csproj -r win-x64
 
     - name: Build (Release)
-      run: dotnet build MathQuizLocker.csproj --configuration Release --no-restore
+      run: dotnet build MathQuizLocker.csproj --configuration Release -r win-x64 --no-restore
 
     - name: Publish for Velopack
-      # This MUST target win-x64 for the installer to work correctly
       run: dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build
 
     - name: Install Velopack CLI
@@ -41,19 +40,6 @@ jobs:
         VERSION=${GITHUB_REF_NAME#v}
         vpk pack -u MathQuizLocker -v $VERSION -p publish -e MathQuizLocker.exe
 
-
-    - name: Restore
-      # Adding the Runtime ID here creates the correct project.assets.json
-      run: dotnet restore MathQuizLocker.csproj -r win-x64
-
-    - name: Build (Release)
-      # Building with the RID ensures the 'obj' folder has the win-x64 targets
-      run: dotnet build MathQuizLocker.csproj --configuration Release -r win-x64 --no-restore
-
-    - name: Publish for Velopack
-      # Now the publish step will find exactly what it needs
-      run: dotnet publish MathQuizLocker.csproj -c Release -r win-x64 --self-contained -o publish --no-build
-
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
@@ -61,7 +47,6 @@ jobs:
         name: MathQuizLocker ${{ github.ref_name }}
         draft: false
         prerelease: false
-        # IMPORTANT: We ONLY upload these three specific files
         files: |
           Releases/*.setup.exe
           Releases/*.nupkg
