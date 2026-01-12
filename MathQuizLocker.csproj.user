@@ -5,7 +5,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="QuizForm.cs">
-      <SubType>Form</SubType>
+      <SubType>Component</SubType>
     </Compile>
   </ItemGroup>
 </Project>

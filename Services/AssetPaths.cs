@@ -19,6 +19,12 @@ namespace MathQuizLocker.Services
         public static string Ui(string fileName) =>
             Path.Combine(AssetsRoot, "UI", fileName);
 
+        public static string KnightAttack(int stage) =>
+            Path.Combine(AssetsRoot, "KnightSprites", $"knight_stage_{stage}_attack.png");
+
+        public static string KnightHit(int stage) =>
+            Path.Combine(AssetsRoot, "KnightSprites", $"knight_stage_{stage}_hit.png");
+
         public static string Dice(string fileName) =>
         Path.Combine(AssetsRoot, "Dice", fileName);
     }
