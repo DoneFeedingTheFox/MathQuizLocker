@@ -1,6 +1,11 @@
-﻿using MathQuizLocker.Services;
+﻿using System;
+using System.Drawing;
+using System.IO;
+using System.Threading.Tasks;
+using MathQuizLocker.Services;
 using Velopack;
 using Velopack.Sources;
+using System.Windows.Forms; // Added to ensure Timer works
 
 namespace MathQuizLocker
 {
@@ -29,17 +34,43 @@ namespace MathQuizLocker
         {
             try
             {
-                var q = _quizEngine.GetNextQuestion(); _a = q.a; _b = q.b;
-                UpdateDiceVisuals(); _txtAnswer.Clear(); _txtAnswer.Focus();
+                var q = _quizEngine.GetNextQuestion();
+                _a = q.a;
+                _b = q.b;
+                UpdateDiceVisuals();
+                _txtAnswer.Clear();
+                _txtAnswer.Focus();
             }
             catch { _quizEngine.InitializeForCurrentLevel(); GenerateQuestion(); }
         }
 
         private void UpdateDiceVisuals()
         {
-            _die1.Image?.Dispose(); _die2.Image?.Dispose();
+            _die1.Image?.Dispose();
+            _die2.Image?.Dispose();
             _die1.Image = LoadImageNoLock(AssetPaths.Dice($"die_{_a}.png"));
             _die2.Image = LoadImageNoLock(AssetPaths.Dice($"die_{_b}.png"));
+        }
+
+        private void ResetBattleState()
+        {
+            _playerHealth = _maxPlayerHealth;
+            _quizEngine.InitializeForCurrentLevel();
+
+            _btnContinue.Visible = false;
+            _btnExit.Visible = false;
+
+            _txtAnswer.Visible = true;
+            _btnSubmit.Visible = true;
+            _die1.Visible = true;
+            _die2.Visible = true;
+            _picMultiply.Visible = true;
+
+            UpdatePlayerStats();
+            SpawnMonster();
+            GenerateQuestion();
+
+            _txtAnswer.Focus();
         }
 
         private void UpdatePlayerStats()
@@ -47,6 +78,7 @@ namespace MathQuizLocker
             if (_isAnimating) return;
             var p = _settings.PlayerProgress;
             int nextLevelXp = XpSystem.GetXpRequiredForNextLevel(p.Level);
+
             _lblLevel.Text = $"KNIGHT LEVEL: {p.Level}";
             _lblXpStatus.Text = $"XP: {p.CurrentXp} / {nextLevelXp}";
             _playerHealthBar.Maximum = _maxPlayerHealth;
@@ -67,7 +99,7 @@ namespace MathQuizLocker
                 t.Stop();
                 _playerHealth = _maxPlayerHealth;
                 _quizEngine.InitializeForCurrentLevel();
-                ResetForNextFight();
+                ResetBattleState(); // Changed from ResetForNextFight to fix your error
             };
             t.Start();
         }
@@ -75,8 +107,13 @@ namespace MathQuizLocker
         private static Image? LoadImageNoLock(string path)
         {
             if (!File.Exists(path)) return null;
-            using var ms = new MemoryStream(File.ReadAllBytes(path));
-            return new Bitmap(ms);
+            try
+            {
+                byte[] bytes = File.ReadAllBytes(path);
+                using var ms = new MemoryStream(bytes);
+                return new Bitmap(ms);
+            }
+            catch { return null; }
         }
 
         private async Task UpdateMyApp()

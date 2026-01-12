@@ -53,6 +53,17 @@ namespace MathQuizLocker
             _btnSubmit = new Button { Text = "ATTACK", FlatStyle = FlatStyle.Flat, BackColor = Color.DarkRed, ForeColor = Color.White, Font = new Font("Segoe UI", 16, FontStyle.Bold) };
             _btnSubmit.Click += (s, e) => BtnSubmit_Click(s, e);
 
+            
+            _btnReset = new Button { Text = "RESET", FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.White, Font = new Font("Segoe UI", 8) };
+            _btnReset.Click += (s, e) =>
+            {
+                if (MessageBox.Show("Reset to Level 1?", "Confirm", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    _settings.ResetProgress();
+                    ResetBattleState();
+                }
+            };
+
             _btnContinue = new Button { Text = "CONTINUE FIGHTING", FlatStyle = FlatStyle.Flat, BackColor = Color.ForestGreen, ForeColor = Color.White, Font = new Font("Segoe UI", 18, FontStyle.Bold), Visible = false };
             _btnContinue.Click += (s, e) => ResetForNextFight();
 
@@ -69,7 +80,8 @@ namespace MathQuizLocker
             }
             catch { }
 
-            this.Controls.AddRange(new Control[] { _picKnight, _picMonster, _die1, _picMultiply, _die2, _monsterHealthBar, _playerHealthBar, _playerXpBar, _lblLevel, _lblXpStatus, _txtAnswer, _btnSubmit, _lblFeedback, _btnExit, _btnContinue, _lblVersion });
+            // Added _btnReset to the collection below
+            this.Controls.AddRange(new Control[] { _picKnight, _picMonster, _die1, _picMultiply, _die2, _monsterHealthBar, _playerHealthBar, _playerXpBar, _lblLevel, _lblXpStatus, _txtAnswer, _btnSubmit, _lblFeedback, _btnReset, _btnExit, _btnContinue, _lblVersion });
             this.Resize += (s, e) => LayoutCombat();
         }
 
@@ -101,6 +113,10 @@ namespace MathQuizLocker
             _picMultiply.Location = new Point(w / 2 - 40, _die1.Top + 20);
 
             _lblFeedback.Location = new Point(w / 2 - _lblFeedback.Width / 2, _die1.Bottom + 20);
+
+            // --- RESET BUTTON LAYOUT ---
+            _btnReset.Size = new Size((int)(100 * scale), (int)(30 * scale));
+            _btnReset.Location = new Point(w - _btnReset.Width - 20, h - _btnReset.Height - 20);
         }
 
         private void ShowVictoryScreen()
