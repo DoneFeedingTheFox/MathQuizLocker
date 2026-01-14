@@ -21,8 +21,12 @@ namespace MathQuizLocker
         {
             string suffix = state == "idle" ? "" : $"_{state}";
             string path = Path.Combine(AssetPaths.AssetsRoot, "Monsters", $"{_currentMonsterName}{suffix}.png");
-            var img = LoadImageNoLock(path);
-            if (img != null) { _picMonster.Image?.Dispose(); _picMonster.Image = img; }
+            var img = AssetCache.GetImageClone(path);
+            if (img != null)
+            {
+                _picMonster.Image?.Dispose();
+                _picMonster.Image = img;
+            }
         }
 
         private void GenerateQuestion()
@@ -49,8 +53,8 @@ namespace MathQuizLocker
         {
             _die1.Image?.Dispose();
             _die2.Image?.Dispose();
-            _die1.Image = LoadImageNoLock(AssetPaths.Dice($"die_{_a}.png"));
-            _die2.Image = LoadImageNoLock(AssetPaths.Dice($"die_{_b}.png"));
+            _die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
+            _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
         }
 
         private void ResetBattleState()
@@ -189,8 +193,13 @@ namespace MathQuizLocker
             Invalidate();
 
             string path = AssetPaths.KnightSprite(KnightProgression.GetKnightStageIndex(p.Level));
-            var img = LoadImageNoLock(path);
-            if (img != null) { _picKnight.Image?.Dispose(); _picKnight.Image = img; }
+            var img = AssetCache.GetImageClone(path);
+            if (img != null)
+            {
+                _picKnight.Image?.Dispose();
+                _picKnight.Image = img;
+            }
+
         }
 
         private void HandleDeath()

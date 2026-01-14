@@ -65,9 +65,11 @@ namespace MathQuizLocker
 
             try
             {
-                this.BackgroundImage = LoadImageNoLock(AssetPaths.Background("Background.png"));
+                this.BackgroundImage = AssetCache.GetImageClone(AssetPaths.Background("Background.png"));
                 this.BackgroundImageLayout = ImageLayout.Stretch;
-                _picMultiply.Image = LoadImageNoLock(AssetPaths.Dice("multiply.png"));
+
+                _picMultiply.Image?.Dispose();
+                _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
             }
             catch { }
 

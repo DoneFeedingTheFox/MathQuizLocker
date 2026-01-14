@@ -57,6 +57,8 @@ namespace MathQuizLocker
             }
             finally
             {
+                AssetCache.DisposeAll();
+
                 if (_mutex != null)
                 {
                     try { _mutex.ReleaseMutex(); } catch { }

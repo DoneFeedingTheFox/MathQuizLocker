@@ -91,20 +91,24 @@ namespace MathQuizLocker
                 for (int i = 0; i < 3; i++)
                 {
                     string faceName = (i == 2) ? "multiply" : $"die_{_rng.Next(1, 7)}";
-                    using (Image? img = LoadImageNoLock(AssetPaths.Dice($"{faceName}.png")))
+                    string path = AssetPaths.Dice($"{faceName}.png");
+
+                    var master = AssetCache.GetMasterBitmap(path);
+                    if (master != null)
                     {
-                        if (img != null)
-                        {
-                            var ctrl = diceControls[i];
-                            var state = g.Save();
-                            g.TranslateTransform(_diceCurrentPositions[i].X + ctrl.Width / 2f, _diceCurrentPositions[i].Y + ctrl.Height / 2f);
-                            g.RotateTransform(_diceRotationAngles[i]);
-                            g.DrawImage(img, -ctrl.Width / 2f, -ctrl.Height / 2f, ctrl.Width, ctrl.Height);
-                            g.Restore(state);
-                        }
+                        var ctrl = diceControls[i];
+                        var state = g.Save();
+
+                        g.TranslateTransform(_diceCurrentPositions[i].X + ctrl.Width / 2f, _diceCurrentPositions[i].Y + ctrl.Height / 2f);
+                        g.RotateTransform(_diceRotationAngles[i]);
+                        g.DrawImage(master, -ctrl.Width / 2f, -ctrl.Height / 2f, ctrl.Width, ctrl.Height);
+
+                        g.Restore(state);
                     }
                 }
             }
+
+        
 
             // 3. Draw Floating Damage Numbers
             lock (_damageNumbers)
@@ -298,6 +302,23 @@ namespace MathQuizLocker
         {
             base.OnShown(e);
             _ = UpdateMyApp();
+
+            // Preload core assets to avoid first-use stutter
+            AssetCache.Preload(
+                AssetPaths.Background("Background.png"),
+                AssetPaths.Dice("multiply.png"),
+                AssetPaths.Dice("die_1.png"),
+                AssetPaths.Dice("die_2.png"),
+                AssetPaths.Dice("die_3.png"),
+                AssetPaths.Dice("die_4.png"),
+                AssetPaths.Dice("die_5.png"),
+                AssetPaths.Dice("die_6.png"),
+                AssetPaths.Dice("die_7.png"),
+                AssetPaths.Dice("die_8.png"),
+                AssetPaths.Dice("die_9.png"),
+                AssetPaths.Dice("die_10.png")
+            );
+
 
             SpawnMonster();
             UpdatePlayerStats();
