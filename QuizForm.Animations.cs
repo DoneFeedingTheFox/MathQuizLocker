@@ -65,6 +65,7 @@ namespace MathQuizLocker
                     if (_monsterHealth <= 0)
                     {
                         XpSystem.AddXp(_settings.PlayerProgress, 50);
+                        AppSettings.Save(_settings);
                         ShowVictoryScreen();
                     }
                     else
