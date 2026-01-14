@@ -31,6 +31,15 @@ namespace MathQuizLocker
 			this.Controls.Add(_lblStatus);
 
 			this.Shown += async (s, e) => await CheckForUpdates();
+
+			this.SetStyle(
+				ControlStyles.AllPaintingInWmPaint |
+				ControlStyles.UserPaint |
+				ControlStyles.OptimizedDoubleBuffer,
+				true);
+
+			this.UpdateStyles();
+
 		}
 
 		private async Task CheckForUpdates()
