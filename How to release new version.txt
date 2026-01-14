@@ -1,13 +1,13 @@
 git describe --tags --abbrev=0
 
 git add .
-git commit -m "Fix: You can now end combat again, remade the exit button"
-git pull origin main --rebase
+git commit -m "Added support for various Biomes and created graphics for these"
+
 git push origin main
 
 
-git tag v1.7.2
-git push origin v1.7.2
+git tag v1.7.6
+git push origin v1.7.6
 
 
 

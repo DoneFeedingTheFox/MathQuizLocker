@@ -45,6 +45,10 @@ namespace MathQuizLocker
         private Rectangle _monsterHealthBarRect;
         private Rectangle _playerXpBarRect;
 
+        private BiomeManager? _biomeManager;
+        private string? _currentBiomeId;
+
+
         private readonly System.Windows.Forms.Timer _damageTimer = new System.Windows.Forms.Timer();
 
         public QuizForm(AppSettings settings)
@@ -269,6 +273,77 @@ namespace MathQuizLocker
             Invalidate();
         }
 
+        private void EnsureBiomesInitialized()
+        {
+            if (_biomeManager != null) return;
+
+            // Hardcoded list for now 
+            // Use whatever files you actually have in your assets folder.
+            var biomes = new List<BiomeDefinition>
+    {
+        new BiomeDefinition
+        {
+            Id = "meadow_01",
+            BackgroundPath = AssetPaths.Background("meadow_01.png"),
+            Knight = new Anchor { X = 0.18f, Y = 0.74f, Scale = 1.0f },
+            MonsterSlots = { new Anchor { X = 0.78f, Y = 0.74f, Scale = 1.0f } }
+        },
+        new BiomeDefinition
+        {
+            Id = "forest_01",
+            BackgroundPath = AssetPaths.Background("forest_01.png"),
+            Knight = new Anchor { X = 0.18f, Y = 0.76f, Scale = 1.0f },
+            MonsterSlots = { new Anchor { X = 0.78f, Y = 0.76f, Scale = 1.0f } }
+        },
+         new BiomeDefinition
+        {
+            Id = "cave_01",
+            BackgroundPath = AssetPaths.Background("cave_01.png"),
+            Knight = new Anchor { X = 0.18f, Y = 0.76f, Scale = 1.0f },
+            MonsterSlots = { new Anchor { X = 0.78f, Y = 0.76f, Scale = 1.0f } }
+        },
+        new BiomeDefinition
+        {
+            Id = "castle_01",
+            BackgroundPath = AssetPaths.Background("castle_01.png"),
+            Knight = new Anchor { X = 0.20f, Y = 0.75f, Scale = 1.0f },
+            MonsterSlots = { new Anchor { X = 0.76f, Y = 0.75f, Scale = 1.0f } }
+        },
+    };
+
+            _biomeManager = new BiomeManager(biomes);
+
+            // Optional: preload the backgrounds so the first switch doesn’t hitch
+            AssetCache.Preload(
+                biomes[0].BackgroundPath,
+                biomes[1].BackgroundPath,
+                biomes[2].BackgroundPath
+            );
+        }
+
+        private void ApplyBiomeForCurrentLevel()
+        {
+            EnsureBiomesInitialized();
+            if (_biomeManager == null) return;
+
+            int level = _settings.PlayerProgress?.Level ?? 1;
+            _biomeManager.SetForLevel(level, levelsPerBiome: 3);
+
+            var biome = _biomeManager.GetCurrent();
+            if (biome.Id == _currentBiomeId) return;
+
+            _currentBiomeId = biome.Id;
+
+            // Set background using your RAM cache
+            this.BackgroundImage?.Dispose();
+            this.BackgroundImage = AssetCache.GetImageClone(biome.BackgroundPath);
+            this.BackgroundImageLayout = ImageLayout.Stretch;
+
+            // Positioning comes in Step 2 (we will NOT move sprites yet)
+            Invalidate();
+        }
+
+
         private void TickFloatingDamage()
         {
             bool anyLeft = false;
@@ -302,10 +377,11 @@ namespace MathQuizLocker
         {
             base.OnShown(e);
             _ = UpdateMyApp();
+            ApplyBiomeForCurrentLevel();
 
             // Preload core assets to avoid first-use stutter
             AssetCache.Preload(
-                AssetPaths.Background("Background.png"),
+                AssetPaths.Background("meadow_o1.png"),
                 AssetPaths.Dice("multiply.png"),
                 AssetPaths.Dice("die_1.png"),
                 AssetPaths.Dice("die_2.png"),
