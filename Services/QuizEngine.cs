@@ -100,24 +100,25 @@ namespace MathQuizLocker.Services
 
 		private bool ShouldUnlockNextLevel()
 		{
-			var allFacts = _settings.Progress.Values
-				.Where(p => (p.A <= _settings.MaxFactorUnlocked || p.B <= _settings.MaxFactorUnlocked)
-							&& p.A <= MaxRowFactor && p.B <= MaxColFactor)
+			if (_settings.MaxFactorUnlocked >= MaxRowFactor) return false;
+
+			int max = _settings.MaxFactorUnlocked;
+
+			var unlockedFacts = _settings.Progress.Values
+				.Where(p => (p.A <= max || p.B <= max) && p.A <= MaxRowFactor && p.B <= MaxColFactor)
 				.ToList();
 
-			if (allFacts.Count == 0) return false;
+			if (unlockedFacts.Count == 0) return false;
 
-			const int requiredStreak = 3;
-			const double requiredRatio = 0.6;
+			int mastered = unlockedFacts.Count(IsMastered);
 
-			int mastered = allFacts.Count(p =>
-				p.CurrentStreak >= requiredStreak &&
-				(p.CorrectCount + p.IncorrectCount) > 0
-			);
+			// Require strong mastery before moving up
+			const double requiredRatio = 0.80; // 80%
+			double ratio = (double)mastered / unlockedFacts.Count;
 
-			double ratio = (double)mastered / allFacts.Count;
-			return ratio >= requiredRatio && _settings.MaxFactorUnlocked < MaxRowFactor;
+			return ratio >= requiredRatio;
 		}
+
 
 		private void MaybeUnlockNextLevel()
 		{
@@ -159,37 +160,67 @@ namespace MathQuizLocker.Services
 
 		public void InitializeForCurrentLevel()
 		{
-			_settings.Progress.Clear();
-			if (_settings.MaxFactorUnlocked < 1) _settings.MaxFactorUnlocked = 1;
+			// Do NOT clear progress; that destroys mastery and causes repetition.
+			if (_settings.MaxFactorUnlocked < 2) _settings.MaxFactorUnlocked = 2; // start at 2
+			if (_settings.MaxFactorUnlocked > MaxRowFactor) _settings.MaxFactorUnlocked = MaxRowFactor;
+
 			EnsureFactsForCurrentLevel();
 		}
 
+		private static bool IsMastered(FactProgress f)
+		{
+			// Tune these numbers if needed.
+			const int masteredStreak = 5;
+			const int minAttempts = 5;
+
+			int attempts = f.CorrectCount + f.IncorrectCount;
+			if (attempts < minAttempts) return false;
+
+			// If they can do it 5 times in a row after enough exposure, treat as mastered.
+			return f.CurrentStreak >= masteredStreak;
+		}
+
+
 		private double GetPriorityWeight(FactProgress fact)
 		{
+			// Hard suppression for mastered facts
+			if (IsMastered(fact))
+				return 0.02; // effectively "rare", but not impossible
+
 			double weight = 1.0;
 
-			// 1. Reduced boost for new facts to allow older facts back in the mix
+			// Prefer brand new facts a bit
 			if (fact.CorrectCount == 0 && fact.IncorrectCount == 0)
-				weight += 2.0;
+				weight += 3.0;
 
-			// 2. High priority for mistakes
-			weight += fact.IncorrectCount * 4.0;
+			// Mistakes matter a lot
+			weight += fact.IncorrectCount * 5.0;
 
-			// 3. Streak reduces priority (Mastery)
-			weight -= fact.CurrentStreak * 1.5;
+			// Prefer frontier facts (keeps progress moving forward)
+			int max = _settings.MaxFactorUnlocked;
+			if (fact.A == max || fact.B == max)
+				weight += 2.5;
 
-			// 4. Anti-Repetition: Significantly reduce weight of recently asked questions
+			// If it’s below frontier, slightly less priority
+			if (fact.A < max && fact.B < max)
+				weight *= 0.8;
+
+			// Streak reduces priority (learning effect)
+			weight -= fact.CurrentStreak * 1.2;
+
+			// Anti-repetition (you already do this; keep it, but simplify to avoid double-time calc)
 			if (fact.LastAsked != DateTime.MinValue)
 			{
 				var secondsSince = (DateTime.Now - fact.LastAsked).TotalSeconds;
-				if (secondsSince < 45) // Penalize if seen in the last 45 seconds
-					weight *= 0.1;
+				if (secondsSince < 45)
+					weight *= 0.08; // stronger penalty
 
 				var minutesSince = (DateTime.Now - fact.LastAsked).TotalMinutes;
-				weight += Math.Min(minutesSince, 10) * 0.5;
+				weight += Math.Min(minutesSince, 10) * 0.4;
 			}
 
-			return Math.Max(weight, 0.1);
+			return Math.Max(weight, 0.05);
 		}
+
 	}
 }

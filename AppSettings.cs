@@ -14,7 +14,7 @@ namespace MathQuizLocker
         public bool LockOnWakeFromSleep { get; set; } = true;
         public bool EnableDeveloperHotkey { get; set; } = true;
 
-        public int MaxFactorUnlocked { get; set; } = 1;
+        public int MaxFactorUnlocked { get; set; } = 2;
 
         public Dictionary<string, FactProgress> Progress { get; set; }
             = new Dictionary<string, FactProgress>();
@@ -64,7 +64,7 @@ namespace MathQuizLocker
         public void ResetProgress()
         {
             // 1. Reset the multiplication table difficulty
-            this.MaxFactorUnlocked = 1;
+            this.MaxFactorUnlocked = 2;
             this.Progress = new Dictionary<string, FactProgress>();
 
             // 2. Reset the knight / XP progress values

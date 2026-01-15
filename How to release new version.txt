@@ -1,13 +1,13 @@
 git describe --tags --abbrev=0
 
 git add .
-git commit -m "Added support for various Biomes and created graphics for these"
+git commit -m "Further optimizations for low end laptops"
 
 git push origin main
 
 
-git tag v1.7.6
-git push origin v1.7.6
+git tag v1.7.8
+git push origin v1.7.8
 
 
 

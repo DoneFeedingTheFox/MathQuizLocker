@@ -158,22 +158,36 @@ namespace MathQuizLocker
 
 		private void DrawBars(Graphics g)
 		{
-			// Defensive: layout may not have run yet.
 			if (_playerHealthBarRect.Width <= 0 || _monsterHealthBarRect.Width <= 0) return;
 
-			EnsureBarsLayerUpToDate();
-
-			if (_barsLayerBitmap != null)
-			{
-				g.DrawImageUnscaled(_barsLayerBitmap, _barsLayerBounds.Location);
-				return;
-			}
-
-			// Fallback (should rarely happen)
 			g.SmoothingMode = SmoothingMode.AntiAlias;
-			DrawFantasyBar(g, _playerHealthBarRect, _playerHealth, _maxPlayerHealth, showText: false);
-			DrawFantasyBar(g, _monsterHealthBarRect, Math.Max(0, _monsterHealth), Math.Max(1, _maxMonsterHealth), showText: false);
+
+			// Player / Monster health — SHOW TEXT
+			DrawFantasyBar(
+				g,
+				_playerHealthBarRect,
+				_playerHealth,
+				_maxPlayerHealth,
+				showText: true
+			);
+
+			DrawFantasyBar(
+				g,
+				_monsterHealthBarRect,
+				Math.Max(0, _monsterHealth),
+				Math.Max(1, _maxMonsterHealth),
+				showText: true
+			);
+
+			// XP bar
+			if (_playerXpBarRect.Width > 0)
+			{
+				var p = _settings.PlayerProgress;
+				int nextLevelXp = XpSystem.GetXpRequiredForNextLevel(p.Level);
+				DrawFantasyBar(g, _playerXpBarRect, Math.Min(p.CurrentXp, nextLevelXp), nextLevelXp, showText: true);
+			}
 		}
+
 
 		private struct BarsSnapshot
 		{
