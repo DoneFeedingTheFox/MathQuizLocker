@@ -50,7 +50,7 @@ namespace MathQuizLocker
 
 		// --- Performance caches (avoid per-frame allocations) ---
 		private readonly Font _damageFont = new Font("Segoe UI", 32f, FontStyle.Bold);
-		private static readonly Font _barTextFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+		private static readonly Font _barTextFont = new Font("SegoeSegoe UI", 9f, FontStyle.Bold);
 
 		// Dice master bitmaps: avoid per-frame string/path churn + cache lookups.
 		private readonly Bitmap?[] _diceMasters = new Bitmap?[7]; // 1..6
@@ -61,6 +61,25 @@ namespace MathQuizLocker
 		private Rectangle _barsLayerBounds;
 		private BarsSnapshot _barsSnapshot;
 
+		// Loot / post-fight upgrade flow (do NOT equip visuals mid-fight)
+		private bool _awaitingChestOpen = false;
+		private int _pendingKnightStage = -1;   // stage earned by level-up
+		private int _preVictoryKnightStage = -1;
+
+		// Knight visuals (equipment) — what the player currently "wears" (persisted!)
+		private int _equippedKnightStage = -1;
+
+		// Loot layout tuning
+		private float _lootScale = 0.85f;
+		private PointF _lootChestOffset = new PointF(0.10f, 0.72f);
+		private PointF _lootItemOffset = new PointF(0.26f, 0.66f);
+
+		// Base sizes (at 1080p scale=1.0)
+		private readonly Size _lootChestBaseSize = new Size(220, 220);
+		private readonly Size _lootItemBaseSize = new Size(140, 140);
+
+		// Provided elsewhere in your project (used by ShowLootDrop)
+	
 
 		private readonly System.Windows.Forms.Timer _damageTimer = new System.Windows.Forms.Timer();
 
@@ -71,10 +90,40 @@ namespace MathQuizLocker
 			_session = new GameSessionManager(_settings, _quizEngine);
 			_playerHealth = _maxPlayerHealth;
 
+			// Safety: never allow level 0
+			if (_settings.PlayerProgress.Level < 1)
+				_settings.PlayerProgress.Level = 1;
+
+			// Pull equipped stage from persisted settings
+			LoadEquippedKnightStageFromSettings();
+
 			_damageTimer.Interval = 16; // ~60 FPS
 			_damageTimer.Tick += (s, e) => TickFloatingDamage();
 
 			InitializeCombatUi();
+		}
+
+		private void LoadEquippedKnightStageFromSettings()
+		{
+			// Requires: PlayerProgress.EquippedKnightStage property exists.
+			// If it's not set yet (-1), we derive from current level once.
+			int persisted = _settings.PlayerProgress.EquippedKnightStage;
+
+			if (persisted >= 0)
+			{
+				_equippedKnightStage = persisted;
+				return;
+			}
+
+			_equippedKnightStage = KnightProgression.GetKnightStageIndex(_settings.PlayerProgress.Level);
+			_settings.PlayerProgress.EquippedKnightStage = _equippedKnightStage;
+			AppSettings.Save(_settings);
+		}
+
+		private void PersistEquippedKnightStage()
+		{
+			_settings.PlayerProgress.EquippedKnightStage = _equippedKnightStage;
+			AppSettings.Save(_settings);
 		}
 
 		protected override CreateParams CreateParams
@@ -83,8 +132,6 @@ namespace MathQuizLocker
 			{
 				var cp = base.CreateParams;
 				cp.Style &= ~0x00080000;    // WS_SYSMENU
-											// NOTE: WS_EX_COMPOSITED often reduces flicker but can significantly hurt performance
-											// on low-end laptops because it forces full-window compositing.
 				cp.ExStyle |= 0x02000000;
 				return cp;
 			}
@@ -92,18 +139,52 @@ namespace MathQuizLocker
 
 		protected override void OnPaint(PaintEventArgs e)
 		{
-			base.OnPaint(e); // Draws background
+			base.OnPaint(e);
 			var g = e.Graphics;
 
-			// Fast defaults (important on low-end laptops)
+			// 1. Scene Setup - High quality for sprites, but no smoothing for pixel-perfect layout
 			g.SmoothingMode = SmoothingMode.None;
 			g.InterpolationMode = InterpolationMode.NearestNeighbor;
 			g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SystemDefault;
 
-			// 1) Bars (cached layer; expensive paths/gradients rendered only when values/layout change)
+			// 2. Draw Knight and Monster (Proportionally)
+			if (_picKnight.Image != null)
+			{
+				Rectangle rect = GetPaddedBounds(_picKnight.Image, _picKnight.Bounds);
+				g.DrawImage(_picKnight.Image, rect);
+			}
+
+			if (_picMonster.Image != null)
+			{
+				Rectangle rect = GetPaddedBounds(_picMonster.Image, _picMonster.Bounds);
+				g.DrawImage(_picMonster.Image, rect);
+			}
+
+			// 3. Draw Loot (Chest and Item) - Drawn after monster to ensure it sits on top
+			if (_picChest.Visible)
+			{
+				var chestImg = AssetCache.GetMasterBitmap(AssetPaths.Items("chest_01.png"));
+				if (chestImg != null)
+				{
+					Rectangle rect = GetPaddedBounds(chestImg, _picChest.Bounds);
+					g.DrawImage(chestImg, rect);
+				}
+			}
+
+			if (_picLoot.Visible && !string.IsNullOrEmpty(_pendingLootItemFile))
+			{
+				var lootImg = AssetCache.GetMasterBitmap(AssetPaths.Items(_pendingLootItemFile));
+				if (lootImg != null)
+				{
+					Rectangle rect = GetPaddedBounds(lootImg, _picLoot.Bounds);
+					g.DrawImage(lootImg, rect);
+				}
+			}
+
+			// 4. Draw HUD / Health & XP Bars
 			DrawBars(g);
 
-			// 2) Animating dice
+			// 5. Draw Dice (Static or Animating)
 			if (_isDiceAnimating && _diceCurrentPositions != null)
 			{
 				EnsureDiceMastersInitialized();
@@ -129,27 +210,30 @@ namespace MathQuizLocker
 					g.Restore(state);
 				}
 			}
+			else if (_die1.Visible) // Draw static dice when not in the air
+			{
+				if (_die1.Image != null) g.DrawImage(_die1.Image, _die1.Bounds);
+				if (_die2.Image != null) g.DrawImage(_die2.Image, _die2.Bounds);
+				if (_picMultiply.Image != null) g.DrawImage(_picMultiply.Image, _picMultiply.Bounds);
+			}
 
-			// 3) Floating damage numbers (AA for text only)
+			// 6. Floating Damage Numbers (Anti-Aliased for smooth text)
 			g.SmoothingMode = SmoothingMode.AntiAlias;
 			g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+
 			lock (_damageNumbers)
 			{
 				for (int i = _damageNumbers.Count - 1; i >= 0; i--)
 				{
 					var num = _damageNumbers[i];
 
-					// Calculate alpha for fade-out
 					int alpha = (int)(num.Opacity * 255);
 					int shadowAlpha = (int)(num.Opacity * 150);
 
 					using (var mainBrush = new SolidBrush(Color.FromArgb(alpha, num.Color)))
 					using (var shadowBrush = new SolidBrush(Color.FromArgb(shadowAlpha, Color.Black)))
 					{
-						// Draw shadow first (offset by 2 pixels) to make text pop against background
 						g.DrawString(num.Text, _damageFont, shadowBrush, num.Position.X + 2, num.Position.Y + 2);
-
-						// Draw main colored text
 						g.DrawString(num.Text, _damageFont, mainBrush, num.Position);
 					}
 				}
@@ -162,24 +246,9 @@ namespace MathQuizLocker
 
 			g.SmoothingMode = SmoothingMode.AntiAlias;
 
-			// Player / Monster health — SHOW TEXT
-			DrawFantasyBar(
-				g,
-				_playerHealthBarRect,
-				_playerHealth,
-				_maxPlayerHealth,
-				showText: true
-			);
+			DrawFantasyBar(g, _playerHealthBarRect, _playerHealth, _maxPlayerHealth, showText: true);
+			DrawFantasyBar(g, _monsterHealthBarRect, Math.Max(0, _monsterHealth), Math.Max(1, _maxMonsterHealth), showText: true);
 
-			DrawFantasyBar(
-				g,
-				_monsterHealthBarRect,
-				Math.Max(0, _monsterHealth),
-				Math.Max(1, _maxMonsterHealth),
-				showText: true
-			);
-
-			// XP bar
 			if (_playerXpBarRect.Width > 0)
 			{
 				var p = _settings.PlayerProgress;
@@ -187,7 +256,6 @@ namespace MathQuizLocker
 				DrawFantasyBar(g, _playerXpBarRect, Math.Min(p.CurrentXp, nextLevelXp), nextLevelXp, showText: true);
 			}
 		}
-
 
 		private struct BarsSnapshot
 		{
@@ -332,6 +400,79 @@ namespace MathQuizLocker
 			}
 		}
 
+		private void EnsureKnightEquippedStageInitialized()
+		{
+			// Always prefer persisted value.
+			int persisted = _settings.PlayerProgress.EquippedKnightStage;
+
+			if (persisted >= 0)
+			{
+				_equippedKnightStage = persisted;
+				return;
+			}
+
+			// If nothing persisted yet, derive once from current level and persist it.
+			if (_equippedKnightStage < 0)
+				_equippedKnightStage = KnightProgression.GetKnightStageIndex(_settings.PlayerProgress.Level);
+
+			_settings.PlayerProgress.EquippedKnightStage = _equippedKnightStage;
+			AppSettings.Save(_settings);
+		}
+
+		private void SetKnightIdleSprite()
+		{
+			EnsureKnightEquippedStageInitialized();
+
+			string path = AssetPaths.KnightSprite(_equippedKnightStage);
+			var img = AssetCache.GetImageClone(path);
+			if (img != null)
+			{
+				_picKnight.Image?.Dispose();
+				_picKnight.Image = img;
+			}
+		}
+
+		/// <summary>
+		/// IMPORTANT BEHAVIOR:
+		/// If loot is shown, the equipment is considered earned and should persist
+		/// even if the player exits to desktop on the victory screen.
+		/// </summary>
+		private void CommitPendingLootIfAny()
+		{
+			if (!_awaitingChestOpen) return;
+			if (_pendingKnightStage < 0) return;
+
+			// Equip immediately and persist.
+			_equippedKnightStage = _pendingKnightStage;
+			PersistEquippedKnightStage();
+		}
+
+		private void ShowLootDrop()
+		{
+			// We no longer assign .Image to the PictureBox.
+			// Instead, we just set the flags that OnPaint uses to decide what to draw.
+			_picChest.Visible = true;
+			_picLoot.Visible = true;
+
+			// Ensure the filename is set so OnPaint knows which item sprite to grab
+			if (string.IsNullOrEmpty(_pendingLootItemFile))
+			{
+				_pendingLootItemFile = "helmet_01.png";
+			}
+
+			// This is critical: It tells Windows to clear the Form and call OnPaint
+			this.Invalidate();
+		}
+
+		private void HideLootDrop()
+		{
+			_picChest.Visible = false;
+			_picLoot.Visible = false;
+
+			// Refresh the screen to remove the drawn sprites
+			this.Invalidate();
+		}
+
 		private static GraphicsPath CreateRoundRect(Rectangle r, int radius)
 		{
 			var path = new GraphicsPath();
@@ -394,7 +535,6 @@ namespace MathQuizLocker
 			{
 				foreach (var d in _damageNumbers)
 				{
-					// Rough bounds: font size 32 => around 40-60 px height; width depends on digits.
 					int w = Math.Max(80, d.Text.Length * 28);
 					int h = 60;
 					var rr = new Rectangle((int)d.Position.X - 10, (int)d.Position.Y - 10, w + 40, h + 40);
@@ -408,13 +548,11 @@ namespace MathQuizLocker
 
 		private void EnsureDiceMastersInitialized()
 		{
-			// Lazy-init (safe to call from OnPaint)
 			if (_diceMasters[1] != null && _multiplyMaster != null) return;
 
 			for (int i = 1; i <= 6; i++)
-			{
 				_diceMasters[i] = AssetCache.GetMasterBitmap(AssetPaths.Dice($"die_{i}.png"));
-			}
+
 			_multiplyMaster = AssetCache.GetMasterBitmap(AssetPaths.Dice("multiply.png"));
 		}
 
@@ -426,7 +564,6 @@ namespace MathQuizLocker
 				return;
 			}
 
-			// Extra padding accounts for rotation.
 			int pad = 40;
 			Rectangle r = Rectangle.Empty;
 
@@ -444,43 +581,40 @@ namespace MathQuizLocker
 		{
 			if (_biomeManager != null) return;
 
-			// Hardcoded list for now 
-			// Use whatever files you actually have in your assets folder.
 			var biomes = new List<BiomeDefinition>
-	{
-		new BiomeDefinition
-		{
-			Id = "meadow_01",
-			BackgroundPath = AssetPaths.Background("meadow_01.png"),
-			Knight = new Anchor { X = 0.18f, Y = 0.74f, Scale = 1.0f },
-			MonsterSlots = { new Anchor { X = 0.78f, Y = 0.74f, Scale = 1.0f } }
-		},
-		new BiomeDefinition
-		{
-			Id = "forest_01",
-			BackgroundPath = AssetPaths.Background("forest_01.png"),
-			Knight = new Anchor { X = 0.18f, Y = 0.76f, Scale = 1.0f },
-			MonsterSlots = { new Anchor { X = 0.78f, Y = 0.76f, Scale = 1.0f } }
-		},
-		 new BiomeDefinition
-		{
-			Id = "cave_01",
-			BackgroundPath = AssetPaths.Background("cave_01.png"),
-			Knight = new Anchor { X = 0.18f, Y = 0.76f, Scale = 1.0f },
-			MonsterSlots = { new Anchor { X = 0.78f, Y = 0.76f, Scale = 1.0f } }
-		},
-		new BiomeDefinition
-		{
-			Id = "castle_01",
-			BackgroundPath = AssetPaths.Background("castle_01.png"),
-			Knight = new Anchor { X = 0.20f, Y = 0.75f, Scale = 1.0f },
-			MonsterSlots = { new Anchor { X = 0.76f, Y = 0.75f, Scale = 1.0f } }
-		},
-	};
+			{
+				new BiomeDefinition
+				{
+					Id = "meadow_01",
+					BackgroundPath = AssetPaths.Background("meadow_01.png"),
+					Knight = new Anchor { X = 0.18f, Y = 0.74f, Scale = 1.0f },
+					MonsterSlots = { new Anchor { X = 0.78f, Y = 0.74f, Scale = 1.0f } }
+				},
+				new BiomeDefinition
+				{
+					Id = "forest_01",
+					BackgroundPath = AssetPaths.Background("forest_01.png"),
+					Knight = new Anchor { X = 0.18f, Y = 0.76f, Scale = 1.0f },
+					MonsterSlots = { new Anchor { X = 0.78f, Y = 0.76f, Scale = 1.0f } }
+				},
+				new BiomeDefinition
+				{
+					Id = "cave_01",
+					BackgroundPath = AssetPaths.Background("cave_01.png"),
+					Knight = new Anchor { X = 0.18f, Y = 0.76f, Scale = 1.0f },
+					MonsterSlots = { new Anchor { X = 0.78f, Y = 0.76f, Scale = 1.0f } }
+				},
+				new BiomeDefinition
+				{
+					Id = "castle_01",
+					BackgroundPath = AssetPaths.Background("castle_01.png"),
+					Knight = new Anchor { X = 0.20f, Y = 0.75f, Scale = 1.0f },
+					MonsterSlots = { new Anchor { X = 0.76f, Y = 0.75f, Scale = 1.0f } }
+				},
+			};
 
 			_biomeManager = new BiomeManager(biomes);
 
-			// Optional: preload the backgrounds so the first switch doesn’t hitch
 			AssetCache.Preload(
 				biomes[0].BackgroundPath,
 				biomes[1].BackgroundPath,
@@ -501,15 +635,12 @@ namespace MathQuizLocker
 
 			_currentBiomeId = biome.Id;
 
-			// Set background using your RAM cache
 			this.BackgroundImage?.Dispose();
 			this.BackgroundImage = AssetCache.GetImageClone(biome.BackgroundPath);
 			this.BackgroundImageLayout = ImageLayout.Stretch;
 
-			// Positioning comes in Step 2 (we will NOT move sprites yet)
 			Invalidate();
 		}
-
 
 		private void TickFloatingDamage()
 		{
@@ -524,13 +655,9 @@ namespace MathQuizLocker
 					d.Opacity -= 0.04f;
 
 					if (d.Opacity <= 0f)
-					{
 						_damageNumbers.RemoveAt(i);
-					}
 					else
-					{
 						anyLeft = true;
-					}
 				}
 			}
 
@@ -543,10 +670,10 @@ namespace MathQuizLocker
 		protected override void OnShown(EventArgs e)
 		{
 			base.OnShown(e);
+
 			_ = UpdateMyApp();
 			ApplyBiomeForCurrentLevel();
 
-			// Preload core assets to avoid first-use stutter
 			AssetCache.Preload(
 				AssetPaths.Background("meadow_01.png"),
 				AssetPaths.Dice("multiply.png"),
@@ -562,12 +689,14 @@ namespace MathQuizLocker
 				AssetPaths.Dice("die_10.png")
 			);
 
-
 			SpawnMonster();
-			UpdatePlayerStats();
+			UpdatePlayerHud();
 			LayoutCombat();
 
-			// Warm caches so first animation frame does not hitch.
+			// Restore correct knight visuals on startup (persisted)
+			EnsureKnightEquippedStageInitialized();
+			SetKnightIdleSprite();
+
 			EnsureDiceMastersInitialized();
 			EnsureBarsLayerUpToDate();
 
@@ -583,6 +712,7 @@ namespace MathQuizLocker
 				_lblFeedback.Text = "FINISH THE FIGHT TO UNLOCK!";
 				_lblFeedback.ForeColor = Color.OrangeRed;
 			}
+
 			base.OnFormClosing(e);
 		}
 
@@ -592,11 +722,24 @@ namespace MathQuizLocker
 			{
 				_barsLayerBitmap?.Dispose();
 				_damageFont.Dispose();
-				// _barTextFont is static and lives for the process lifetime.
 			}
 
 			base.Dispose(disposing);
 		}
+
+		// --------------------------------------------------------------------
+		// IMPORTANT: Call this from your victory screen method in QuizForm.Ui.cs
+		// --------------------------------------------------------------------
+		// In ShowVictoryScreen(), AFTER you set _awaitingChestOpen and _pendingKnightStage:
+		//
+		// if (_awaitingChestOpen)
+		// {
+		//     CommitPendingLootIfAny();
+		//     ShowLootDrop();
+		// }
+		//
+		// This ensures: exiting on victory screen still keeps the item.
+		// --------------------------------------------------------------------
 	}
 
 	public class FloatingDamage
@@ -605,7 +748,6 @@ namespace MathQuizLocker
 		public PointF Position { get; set; }
 		public float Opacity { get; set; } = 1.0f;
 		public Color Color { get; set; }
-
 		public float VelocityY { get; set; } = -2.0f;
 	}
 }

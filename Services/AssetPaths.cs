@@ -27,5 +27,9 @@ namespace MathQuizLocker.Services
 
         public static string Dice(string fileName) =>
         Path.Combine(AssetsRoot, "Dice", fileName);
-    }
+
+		public static string Items(string file) =>
+    	Path.Combine(AssetsRoot, "items", file);
+
+	}
 }

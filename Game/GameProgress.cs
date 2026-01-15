@@ -26,7 +26,7 @@ namespace MathQuizLocker
         public int Level { get; set; } = 1;
         public int CurrentXp { get; set; } = 0;
         public int TotalXp { get; set; } = 0;
-        public int CorrectAnswersCount { get; set; } = 0; // Fixed the missing property
+        public int CorrectAnswersCount { get; set; } = 0; 
         public int CheatTokens { get; set; } = 0;
 
         public List<AbilityState> UnlockedAbilities { get; set; }
@@ -34,7 +34,8 @@ namespace MathQuizLocker
 
         public int StreakDays { get; set; } = 0;
         public DateTime? LastQuizDate { get; set; }
-    }
+		public int EquippedKnightStage { get; set; } = -1;
+	}
 
     public static class KnightProgression
     {
