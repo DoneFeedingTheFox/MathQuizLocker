@@ -1,13 +1,13 @@
 git describe --tags --abbrev=0
 
 git add .
-git commit -m "Added the first version of loot to the game"
+git commit -m "Adding some more graphics"
 
 git push origin main
 
 
-git tag v1.8.0
-git push origin v1.8.0
+git tag v1.8.1
+git push origin v1.8.1
 
 
 
