@@ -1,92 +1,94 @@
-﻿using MathQuizLocker.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.Json;
-
+using MathQuizLocker.Models;
 
 namespace MathQuizLocker
 {
     public class AppSettings
     {
-        public int RequiredCorrectAnswers { get; set; } = 10;
-        public int MinOperand { get; set; } = 1;
-        public int MaxOperand { get; set; } = 10;
+        // --- Core Settings ---
         public int IdleMinutesBeforeLock { get; set; } = 5;
-        public bool ShowQuizOnStartup { get; set; } = true;
         public bool LockOnWakeFromSleep { get; set; } = true;
-        public bool EnableDeveloperHotkey { get; set; } = true;
-
+        public bool ShowQuizOnStartup { get; set; } = true;
+        public int RequiredCorrectAnswers { get; set; } = 10;
         public int MaxFactorUnlocked { get; set; } = 2;
 
-        public Dictionary<string, FactProgress> Progress { get; set; }
-            = new Dictionary<string, FactProgress>();
-
+        // --- Player Data ---
         public PlayerProgress PlayerProgress { get; set; } = new PlayerProgress();
 
-        public static string GetConfigPath()
-        {
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            return Path.Combine(baseDir, "mathlock.settings.json");
-        }
+        // --- Spaced Repetition Data ---
+        // Dictionary key format: "AxB" (e.g., "2x5")
+        public Dictionary<string, FactProgress> Progress { get; set; } = new Dictionary<string, FactProgress>();
 
+        private static readonly string SettingsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MathQuizLocker",
+            "settings.json");
+
+        public AppSettings() { }
+
+        /// <summary>
+        /// Loads settings from the local app data folder or creates defaults.
+        /// </summary>
         public static AppSettings Load()
         {
-            var path = GetConfigPath();
-
-            if (!File.Exists(path))
-            {
-                var defaults = new AppSettings();
-                Save(defaults);
-                return defaults;
-            }
-
             try
             {
-                var json = File.ReadAllText(path);
-                AppSettings? settings = JsonSerializer.Deserialize<AppSettings>(
-                    json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                settings ??= new AppSettings();
-                settings.Progress ??= new Dictionary<string, FactProgress>();
-
-                if (settings.MaxFactorUnlocked < 1) settings.MaxFactorUnlocked = 1;
-                if (settings.MaxFactorUnlocked > 10) settings.MaxFactorUnlocked = 10;
-
-                settings.PlayerProgress ??= new PlayerProgress();
-
-                return settings;
+                if (File.Exists(SettingsPath))
+                {
+                    string json = File.ReadAllText(SettingsPath);
+                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                return new AppSettings();
+                System.Diagnostics.Debug.WriteLine($"Failed to load settings: {ex.Message}");
             }
+
+            return new AppSettings();
         }
 
-        public void ResetProgress()
-        {
-            // 1. Reset the multiplication table difficulty
-            this.MaxFactorUnlocked = 2;
-            this.Progress = new Dictionary<string, FactProgress>();
-
-            // 2. Reset the knight / XP progress values
-            // I have removed TotalCorrectAnswers because it does not exist in your PlayerProgress class
-            this.PlayerProgress.Level = 0;
-            this.PlayerProgress.CurrentXp = 0;
-            this.PlayerProgress.TotalXp = 0; 
-            this.PlayerProgress.CheatTokens = 0;
-            this.PlayerProgress.UnlockedAbilities.Clear();
-
-            // 3. Save these changes
-            Save(this);
-        }
-
+        /// <summary>
+        /// Saves the current state to settings.json.
+        /// </summary>
         public static void Save(AppSettings settings)
         {
-            var path = GetConfigPath();
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
+            try
             {
-                WriteIndented = true
-            });
-            File.WriteAllText(path, json);
+                string dir = Path.GetDirectoryName(SettingsPath)!;
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(SettingsPath, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Fully resets the player's journey back to Level 1.
+        /// </summary>
+        public void ResetProgress()
+        {
+            PlayerProgress = new PlayerProgress();
+            MaxFactorUnlocked = 2;
+            Progress.Clear();
+            Save(this);
         }
     }
+
+    public class PlayerProgress
+    {
+        public int Level { get; set; } = 1;
+        public int CurrentXp { get; set; } = 0;
+        public int TotalXp { get; set; } = 0;
+        public int CheatTokens { get; set; } = 0;
+        public int EquippedKnightStage { get; set; } = 0;
+        public List<AbilityState> UnlockedAbilities { get; set; } = new List<AbilityState>();
+    }
+
 }

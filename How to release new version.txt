@@ -1,13 +1,13 @@
 git describe --tags --abbrev=0
 
 git add .
-git commit -m "Adding some more graphics"
+git commit -m "centralized game logic by moving health and combat state from the UI layer into a dedicated GameSessionManager"
 
 git push origin main
 
 
-git tag v1.8.1
-git push origin v1.8.1
+git tag v1.9.0
+git push origin v1.9.0
 
 
 

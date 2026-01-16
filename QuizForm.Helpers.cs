@@ -1,375 +1,292 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Threading.Tasks;
 using MathQuizLocker.Services;
-using Velopack;
-using Velopack.Sources;
 
 namespace MathQuizLocker
 {
-	public partial class QuizForm
-	{
-		// ------------------------------------------------------------
-		// Configurable Loot Table
-		// Level -> (EquipStage, ItemFile)
-		//
-		// EquipStage is the knight visual stage you want to apply AFTER the fight
-		// when the player presses Continue.
-		//
-		// ItemFile must exist in: \assets\items\
-		// Chest file is fixed to chest_01.png for now.
-		// ------------------------------------------------------------
-		private const string ChestFile = "chest_01.png";
-
-		private readonly Dictionary<int, (int equipStage, string itemFile)> _lootTable =
-			new Dictionary<int, (int equipStage, string itemFile)>
-			{
-				// Example: when reaching Level 1, show chest + helmet_01 and equip stage 1
-				{ 1, (1, "helmet_01.png") },
-
-				// Add more rewards here, for example:
-				// { 5, (3, "armor_01.png") },
-				// { 7, (4, "sword_01.png") },
-			};
-
-		// Prevent repeating rewards during the same run (persistence can be added later to AppSettings)
-		private readonly HashSet<int> _claimedLootLevels = new HashSet<int>();
-
-		// Pending loot item for ShowLootDrop()
-		private string? _pendingLootItemFile;
-
-		private void SpawnMonster()
-		{
-			int tier = Math.Max(1, _settings.MaxFactorUnlocked);
-			_maxMonsterHealth = 40 + (tier * 35);
-			_monsterHealth = _maxMonsterHealth;
-
-			_currentMonsterName = tier < 4 ? "slime" : tier < 7 ? "orc" : "dragon";
-			UpdateMonsterSprite("idle");
-			Invalidate();
-		}
-
-		private Rectangle GetPaddedBounds(Image img, Rectangle target)
-		{
-			if (img == null) return target;
-
-			float ratio = Math.Min((float)target.Width / img.Width, (float)target.Height / img.Height);
-			int newWidth = (int)(img.Width * ratio);
-			int newHeight = (int)(img.Height * ratio);
-
-			int x = target.X + (target.Width - newWidth) / 2;
-			int y = target.Y + (target.Height - newHeight) / 2;
-
-			return new Rectangle(x, y, newWidth, newHeight);
-		}
-
-		private void UpdateMonsterSprite(string state)
-		{
-			string suffix = state == "idle" ? "" : $"_{state}";
-			string path = Path.Combine(AssetPaths.AssetsRoot, "Monsters", $"{_currentMonsterName}{suffix}.png");
-
-			var img = AssetCache.GetImageClone(path);
-			if (img != null)
-			{
-				_picMonster.Image?.Dispose();
-				_picMonster.Image = img;
-			}
-		}
-
-		private void AnimateDiceRoll()
-		{
-			_isAnimating = true;
-			_isDiceAnimating = true;
-			_scrambleTicks = 0;
-
-			_die1.Visible = _die2.Visible = _picMultiply.Visible = false;
-
-			_diceCurrentPositions = new PointF[] {
-				new PointF(_die1.Left, _die1.Top),
-				new PointF(_die2.Left, _die2.Top),
-				new PointF(_picMultiply.Left, _picMultiply.Top)
-			};
-
-			_diceVelocities = new PointF[3];
-			_diceRotationAngles = new float[3];
-
-			float centerX = this.ClientSize.Width / 2f;
-			float deadZone = 110f;
-
-			for (int i = 0; i < 3; i++)
-			{
-				_diceVelocities[i] = new PointF(_rng.Next(-15, 16), _rng.Next(-30, -20));
-				_diceRotationAngles[i] = _rng.Next(0, 360);
-			}
-
-			_diceTimer?.Stop();
-			_diceTimer = new System.Windows.Forms.Timer { Interval = 10 };
-			_diceTimer.Tick += (s, e) =>
-			{
-				_scrambleTicks++;
-
-				for (int i = 0; i < 3; i++)
-				{
-					_diceVelocities[i].Y += 4.5f;
-					_diceCurrentPositions[i].X += _diceVelocities[i].X;
-					_diceCurrentPositions[i].Y += _diceVelocities[i].Y;
-					_diceRotationAngles[i] += _diceVelocities[i].X * 5.0f;
-
-					if (i == 2)
-					{
-						_diceCurrentPositions[i].X = centerX - (_picMultiply.Width / 2f);
-					}
-					else
-					{
-						float relativeX = _diceCurrentPositions[i].X + (_die1.Width / 2f) - centerX;
-
-						if (Math.Abs(relativeX) < deadZone)
-						{
-							float pushDir = (relativeX >= 0) ? 1 : -1;
-							_diceVelocities[i].X = pushDir * 12.0f;
-						}
-
-						if (_diceCurrentPositions[i].X < centerX - 350) _diceVelocities[i].X = Math.Abs(_diceVelocities[i].X);
-						if (_diceCurrentPositions[i].X > centerX + 350 - _die1.Width) _diceVelocities[i].X = -Math.Abs(_diceVelocities[i].X);
-					}
-
-					float floorY = (this.ClientSize.Height * 0.10f);
-					if (_diceCurrentPositions[i].Y > floorY)
-					{
-						_diceVelocities[i].Y *= -0.35f;
-						_diceCurrentPositions[i].Y = floorY;
-						_diceVelocities[i].X *= 0.6f;
-						_diceRotationAngles[i] *= 0.7f;
-					}
-				}
-
-				this.Invalidate();
-
-				if (_scrambleTicks >= 18)
-				{
-					_diceTimer.Stop();
-					_isDiceAnimating = false;
-					_isAnimating = false;
-					FinalizeDiceLand();
-				}
-			};
-
-			_diceTimer.Start();
-		}
-
-		private void FinalizeDiceLand()
-		{
-			Point die1Pos = Point.Round(_diceCurrentPositions[0]);
-			Point die2Pos = Point.Round(_diceCurrentPositions[1]);
-			Point multPos = Point.Round(_diceCurrentPositions[2]);
-
-			int minGap = 15;
-			int safeWidth = (_die1.Width / 2) + (_picMultiply.Width / 2) + minGap;
-
-			if (Math.Abs(die1Pos.X - multPos.X) < safeWidth)
-				die1Pos.X = multPos.X - safeWidth;
-
-			if (Math.Abs(die2Pos.X - multPos.X) < safeWidth)
-				die2Pos.X = multPos.X + safeWidth;
-
-			_die1.Location = die1Pos;
-			_die2.Location = die2Pos;
-			_picMultiply.Location = multPos;
-
-			UpdateDiceVisuals();
-			_die1.Visible = _die2.Visible = _picMultiply.Visible = true;
-
-			this.Invalidate();
-		}
-
-		private void GenerateQuestion()
-		{
-			try
-			{
-				var q = _quizEngine.GetNextQuestion();
-				_a = q.a;
-				_b = q.b;
-
-				AnimateDiceRoll();
-
-				_txtAnswer.Clear();
-				_txtAnswer.Focus();
-			}
-			catch
-			{
-				_quizEngine.InitializeForCurrentLevel();
-				GenerateQuestion();
-			}
-		}
-
-		private void UpdateDiceVisuals()
-		{
-			_die1.Image?.Dispose();
-			_die2.Image?.Dispose();
-			_die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
-			_die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
-		}
-
-		private void ResetBattleState()
-		{
-			_playerHealth = _maxPlayerHealth; //
-			_quizEngine.InitializeForCurrentLevel(); //
-
-			_btnContinue.Visible = false; //
-			_btnExit.Visible = false; //
-
-			_txtAnswer.Visible = true; //
-			_btnSubmit.Visible = true; //
-			_die1.Visible = true; //
-			_die2.Visible = true; //
-			_picMultiply.Visible = true; //
-
-			// Hide loot visuals on reset
-			HideLootDrop(); //
-			_awaitingChestOpen = false; //
-			_pendingKnightStage = -1; //
-			_preVictoryKnightStage = -1; //
-			_pendingLootItemFile = null; //
-
-			UpdatePlayerHud(); //
-
-			// --- FIX FOR KNIGHT RESET ---
-			// 1. Force the internal stage variable back to 0 (Level 1 visual)
-			_equippedKnightStage = 0;
-
-			// 2. Persist this change to your settings so it stays reset after closing the app
-			_settings.PlayerProgress.EquippedKnightStage = 0;
-			AppSettings.Save(_settings); //
-
-			// 3. Reload the actual Image into _picKnight.Image for OnPaint to see
-			SetKnightIdleSprite(); //
-
-			SpawnMonster(); //
-			GenerateQuestion(); //
-
-			_txtAnswer.Focus(); //
-			this.Invalidate(); // Force redraw the whole scene
-		}
-
-		// ---- SPLIT: HUD vs Sprite ----
-
-		private void UpdatePlayerHud()
-		{
-			if (_isAnimating) return;
-
-			var p = _settings.PlayerProgress;
-			int nextLevelXp = XpSystem.GetXpRequiredForNextLevel(p.Level);
-
-			_lblLevel.Text = $"KNIGHT LEVEL: {p.Level}";
-			_lblXpStatus.Text = $"XP: {p.CurrentXp} / {nextLevelXp}";
-			Invalidate();
-		}
-
-		// IMPORTANT: This method must NOT update visuals from current level.
-		// Keep it as a compatibility wrapper if other code still calls it.
-		private void UpdateKnightSpriteForCurrentLevel()
-		{
-			SetKnightIdleSprite(); // uses _equippedKnightStage
-		}
-
-		private void HandleDeath()
-		{
-			_lblFeedback.Text = "YOU HAVE FALLEN...";
-			var t = new System.Windows.Forms.Timer { Interval = 2000 };
-			t.Tick += (s, e) =>
-			{
-				t.Stop();
-				_playerHealth = _maxPlayerHealth;
-				_quizEngine.InitializeForCurrentLevel();
-				ResetBattleState();
-			};
-			t.Start();
-		}
-
-		private static Image? LoadImageNoLock(string path)
-		{
-			if (!File.Exists(path)) return null;
-			try
-			{
-				byte[] bytes = File.ReadAllBytes(path);
-				using var ms = new MemoryStream(bytes);
-				return new Bitmap(ms);
-			}
-			catch { return null; }
-		}
-
-		private void EnsureHudOnTop()
-		{
-			_txtAnswer.BringToFront();
-			_btnSubmit.BringToFront();
-
-			_lblFeedback.BringToFront();
-			_lblLevel.BringToFront();
-			_lblXpStatus.BringToFront();
-			_btnReset.BringToFront();
-			_lblVersion.BringToFront();
-
-			_die1.BringToFront();
-			_picMultiply.BringToFront();
-			_die2.BringToFront();
-
-			if (_btnContinue.Visible) _btnContinue.BringToFront();
-			if (_btnExit.Visible) _btnExit.BringToFront();
-
-			if (_picChest.Visible) _picChest.BringToFront();
-			if (_picLoot.Visible) _picLoot.BringToFront();
-		}
-
-		// ------------------------------------------------------------
-		// Loot helper: call this right AFTER XP is awarded (and saved)
-		// and AFTER you know the new level.
-		//
-		// This sets:
-		//   _awaitingChestOpen
-		//   _pendingKnightStage
-		//   _pendingLootItemFile
-		// ------------------------------------------------------------
-		private void EvaluateLootForNewLevel()
-		{
-			int newLevel = _settings.PlayerProgress.Level;
-
-			if (_lootTable.TryGetValue(newLevel, out var reward) && !_claimedLootLevels.Contains(newLevel))
-			{
-				_pendingKnightStage = reward.equipStage;
-				_pendingLootItemFile = reward.itemFile;
-				_awaitingChestOpen = true;
-			}
-			else
-			{
-				_pendingKnightStage = -1;
-				_pendingLootItemFile = null;
-				_awaitingChestOpen = false;
-			}
-		}
-
-		// ------------------------------------------------------------
-		// Loot helper: mark claimed after applying the reward (on Continue)
-		// ------------------------------------------------------------
-		private void MarkLootClaimedForCurrentLevel()
-		{
-			_claimedLootLevels.Add(_settings.PlayerProgress.Level);
-		}
-
-		private async Task UpdateMyApp()
-		{
-			try
-			{
-				var mgr = new UpdateManager(new GithubSource("https://github.com/DoneFeedingTheFox/MathQuizLocker", null, false));
-				var newVersion = await mgr.CheckForUpdatesAsync();
-				if (newVersion != null)
-				{
-					await mgr.DownloadUpdatesAsync(newVersion);
-					mgr.ApplyUpdatesAndRestart(newVersion);
-				}
-			}
-			catch { }
-		}
-	}
+    public partial class QuizForm
+    {
+        private void ApplyBiomeForCurrentLevel()
+        {
+            int level = _settings.PlayerProgress.Level;
+
+           
+            string bgName = "meadow_01.png";
+            if (level > 9) bgName = "castle_01.png";
+            else if (level > 6) bgName = "cave_01.png";
+            else if (level > 3) bgName = "forest_01.png";
+
+            this.BackgroundImage?.Dispose();
+            this.BackgroundImage = AssetCache.GetImageClone(AssetPaths.Background(bgName));
+            this.BackgroundImageLayout = ImageLayout.Stretch;
+        }
+
+        private void ShowLootDrop()
+        {
+            int currentLevel = _settings.PlayerProgress.Level;
+
+            // Level 2 player gets item_1 (the reward for reaching lvl 2)
+            _pendingLootItemFile = $"item_{currentLevel - 1}.png";
+            _pendingKnightStage = currentLevel - 1;
+
+            _picChest.Image = AssetCache.GetImageClone(AssetPaths.Items("chest_01.png"));
+            _picChest.Visible = true;
+            _picLoot.Visible = false;
+
+            _picChest.Location = new Point(_picMonster.Left + (_picMonster.Width / 4), _picMonster.Bottom - _picChest.Height);
+
+            AnimateChestOpening();
+        }
+
+
+
+
+        private void ResetProgress()
+        {
+            var confirm = MessageBox.Show("Reset all progress for testing?", "Debug Reset", MessageBoxButtons.YesNo);
+            if (confirm == DialogResult.Yes)
+            {
+                // 1. Wipe the progress object
+                _settings.PlayerProgress = new PlayerProgress();
+
+                // 2. Pass _settings as the argument to the static Save method
+                AppSettings.Save(_settings);
+
+                // 3. Restart the application
+                Application.Restart();
+            }
+        }
+
+        private void AnimateChestOpening()
+        {
+            _isChestOpening = true;
+            _chestShakeTicks = 0;
+
+            int currentLevel = _settings.PlayerProgress.Level;
+
+            // Use Level - 1 if your item assets start at item_0.png
+            _pendingLootItemFile = $"item_{currentLevel - 1}.png";
+            _pendingKnightStage = currentLevel;
+
+            _animationTimer.Stop();
+            _animationTimer = new System.Windows.Forms.Timer { Interval = 30 };
+            _animationTimer.Tick += (s, e) =>
+            {
+                _chestShakeTicks++;
+
+                // Phase 1: Shake the chest (Anticipation)
+                if (_chestShakeTicks < 20)
+                {
+                    _picChest.Left += _rng.Next(-5, 6);
+                }
+                else if (_chestShakeTicks == 20)
+                {
+                    _picChest.Image = AssetCache.GetImageClone(AssetPaths.Items("chest_open_01.png"));
+
+                    var lootImg = AssetCache.GetImageClone(AssetPaths.Items(_pendingLootItemFile));
+                    if (lootImg != null)
+                    {
+                        _picLoot.Image = lootImg;
+
+                        // FIX: Explicitly set size and transparency
+                        float scale = this.ClientSize.Height / 1080f;
+                        _picLoot.Size = new Size((int)(120 * scale), (int)(120 * scale));
+                        _picLoot.BackColor = Color.Transparent;
+
+                        // Position it on the gold pile (right side of center)
+                        int lootX = _picChest.Left + (_picChest.Width / 2) + 5;
+                        int lootY = _picChest.Top + (_picChest.Height / 4); // Lifted slightly higher
+
+                        _picLoot.Location = new Point(lootX, lootY);
+                        _picLoot.Visible = true;
+                        _picLoot.BringToFront();
+                    }
+
+                    // 4. Evolution: Update Knight to next stage
+                    _equippedKnightStage = _pendingKnightStage;
+                    _settings.PlayerProgress.EquippedKnightStage = _equippedKnightStage;
+                    SetKnightIdleSprite();
+
+                    // 5. Show the Victory Buttons
+                    _btnContinue.Visible = true;
+                    _btnExit.Visible = true;
+                    _btnContinue.Focus();
+                }
+                else if (_chestShakeTicks > 50)
+                {
+                    _animationTimer.Stop();
+                    _isChestOpening = false;
+                }
+
+                // Force the form to redraw the new positions
+                this.Invalidate();
+            };
+            _animationTimer.Start();
+        }
+
+        private Rectangle GetPaddedBounds(Image img, Rectangle target)
+        {
+            if (img == null) return target;
+
+            float ratio = Math.Min((float)target.Width / img.Width, (float)target.Height / img.Height);
+            int newWidth = (int)(img.Width * ratio);
+            int newHeight = (int)(img.Height * ratio);
+
+            int x = target.X + (target.Width - newWidth) / 2;
+            int y = target.Y + (target.Height - newHeight) / 2;
+
+            return new Rectangle(x, y, newWidth, newHeight);
+        }
+       
+
+        
+
+        private void UpdatePlayerHud()
+        {
+       
+            if (_lblLevel == null || _lblXpStatus == null || _settings?.PlayerProgress == null)
+                return;
+
+            var p = _settings.PlayerProgress;
+            int nextLevelXp = XpSystem.GetXpRequiredForNextLevel(p.Level);
+
+            _lblLevel.Text = $"KNIGHT LEVEL: {p.Level}";
+            _lblXpStatus.Text = $"XP: {p.CurrentXp} / {nextLevelXp}";
+            this.Invalidate();
+        }
+
+        private void SpawnMonster()
+        {
+            int tier = Math.Max(1, _settings.MaxFactorUnlocked);
+    
+
+            _currentMonsterName = tier < 4 ? "slime" : tier < 7 ? "orc" : "dragon";
+            UpdateMonsterSprite("idle");
+        }
+
+        private void UpdateMonsterSprite(string state)
+        {
+            string suffix = state == "idle" ? "" : $"_{state}";
+            string path = AssetPaths.Monsters($"{_currentMonsterName}{suffix}.png");
+
+            var img = AssetCache.GetImageClone(path);
+            if (img != null)
+            {
+                _picMonster.Image?.Dispose();
+                _picMonster.Image = img;
+            }
+        }
+
+
+
+        private void GenerateQuestion()
+        {
+            var q = _quizEngine.GetNextQuestion();
+            _a = q.a;
+            _b = q.b;
+
+            // Load the images into the controls before the animation starts
+            _die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
+            _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
+
+            // Ensure this path matches your "multiply.png" filename in the Assets/Dice folder
+            _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
+            AnimateDiceRoll();
+
+            _txtAnswer.Clear();
+            _txtAnswer.Focus();
+        }
+
+        private void DrawHealthBar(Graphics g, Rectangle bounds, int current, int max, Color color)
+        {
+            int barWidth = (int)(bounds.Width * 0.8);
+            int barHeight = 12;
+            int x = bounds.X + (bounds.Width - barWidth) / 2;
+            int y = bounds.Y - 30; // Float slightly above sprite
+
+            g.FillRectangle(Brushes.DimGray, x, y, barWidth, barHeight);
+            float percent = Math.Max(0, (float)current / max);
+            g.FillRectangle(new SolidBrush(color), x, y, barWidth * percent, barHeight);
+            g.DrawRectangle(Pens.Black, x, y, barWidth, barHeight);
+        }
+
+        public void ShowDamage(int amount, Point pos, Color color)
+        {
+            _damageNumbers.Add(new FloatingText
+            {
+                Text = amount > 0 ? $"-{amount}" : "MISS",
+                Position = new PointF(pos.X + 50, pos.Y),
+                TextColor = color,
+                Opacity = 1.0f
+            });
+        }
+
+        public class FloatingText
+        {
+            public string Text;
+            public PointF Position;
+            public float Opacity = 1.0f;
+            public Color TextColor;
+            public float VelocityY = -2.0f;
+        }
+
+        private void AnimateDiceRoll()
+        {
+            _isAnimating = true;
+            _scrambleTicks = 0;
+            _animationTimer.Interval = 16;
+
+            float centerX = this.ClientSize.Width / 2f;
+            // Set starting positions above the screen
+            _diceCurrentPositions = new PointF[] {
+        new PointF(centerX - 200, -100),
+        new PointF(centerX + 100, -150),
+        new PointF(centerX - 40, -120)
+    };
+
+            for (int i = 0; i < 3; i++)
+            {
+                _diceVelocities[i] = new PointF(_rng.Next(-8, 9), _rng.Next(10, 20));
+                _diceRotationAngles[i] = _rng.Next(0, 360);
+            }
+
+            _animationTimer.Stop();
+            _animationTimer = new System.Windows.Forms.Timer { Interval = 16 };
+            _animationTimer.Tick += (s, e) => {
+                _scrambleTicks++;
+                for (int i = 0; i < 3; i++)
+                {
+                    _diceVelocities[i].Y += 1.5f; // Gravity
+                    _diceCurrentPositions[i].X += _diceVelocities[i].X;
+                    _diceCurrentPositions[i].Y += _diceVelocities[i].Y;
+                    _diceRotationAngles[i] += _diceVelocities[i].X * 2f;
+
+                    float floorY = this.ClientSize.Height * 0.15f;
+                    if (_diceCurrentPositions[i].Y > floorY)
+                    {
+                        _diceCurrentPositions[i].Y = floorY;
+                        _diceVelocities[i].Y *= -0.45f; // Bounce
+                    }
+                }
+                this.Invalidate();
+
+                if (_scrambleTicks > 45)
+                {
+                    _animationTimer.Stop();
+                    _isAnimating = false;
+                    FinalizeDiceLand();
+                }
+            };
+            _animationTimer.Start();
+        }
+
+        private void FinalizeDiceLand()
+        {
+            LayoutCombat();
+            _die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
+            _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
+            this.Invalidate();
+        }
+    }
 }

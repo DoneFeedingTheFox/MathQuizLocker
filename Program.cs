@@ -1,8 +1,8 @@
-using MathQuizLocker;
 using System;
 using System.Threading;
 using System.Windows.Forms;
 using Velopack;
+using MathQuizLocker.Services;
 
 namespace MathQuizLocker
 {
@@ -15,7 +15,7 @@ namespace MathQuizLocker
         static void Main()
         {
             // 1. VELOPACK STARTUP HOOKS
-            // This must run first to handle installation/uninstallation events
+            // Must run first to handle installation/uninstallation events
             VelopackApp.Build().Run();
 
             // 2. SINGLE INSTANCE CHECK
@@ -30,21 +30,17 @@ namespace MathQuizLocker
                 Application.SetCompatibleTextRenderingDefault(false);
 
                 // 3. START UPDATER (Splash Screen)
-                // We show this as a dialog. It will block execution until it closes.
+                // This blocks execution until the update check is finished
                 using (var updateForm = new UpdateForm())
                 {
-                    // .ShowDialog() returns only when the update check is finished
-                    // or if no update was found.
                     if (updateForm.ShowDialog() == DialogResult.OK)
                     {
                         // 4. START MAIN APPLICATION
-                        // If we reach here, either the app is up to date or update failed/skipped.
+                        // Runs the background context that monitors idle time
                         Application.Run(new LockApplicationContext());
                     }
                     else
                     {
-                        // If ShowDialog didn't return OK (e.g., user forced close
-                        // or updater logic failed), we exit to be safe.
                         Application.Exit();
                     }
                 }
@@ -57,6 +53,7 @@ namespace MathQuizLocker
             }
             finally
             {
+                // Clean up resources
                 AssetCache.DisposeAll();
 
                 if (_mutex != null)
