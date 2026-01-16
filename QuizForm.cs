@@ -88,6 +88,10 @@ namespace MathQuizLocker
 
         protected override void OnPaint(PaintEventArgs e)
         {
+            e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
+            e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
+            e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
             base.OnPaint(e);
             var g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
