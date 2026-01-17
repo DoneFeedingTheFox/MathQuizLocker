@@ -24,8 +24,8 @@ namespace MathQuizLocker
 
         // Loot & Progression
         private bool _awaitingChestOpen = false;
-        private int _pendingKnightStage = -1;
-        private int _equippedKnightStage = -1;
+        private int _pendingKnightStage = 1;
+        private int _equippedKnightStage = 1;
         private string? _pendingLootItemFile;
 
         private int _chestShakeTicks = 0;
@@ -58,10 +58,11 @@ namespace MathQuizLocker
             // 1. MUST BE FIRST: Create the actual control objects
             InitializeCombatUi();
 
-            // 2. Set initial non-UI values
-            _equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage >= 0
-                ? _settings.PlayerProgress.EquippedKnightStage : 0;
-        }
+			// 2. Set initial non-UI values
+			_equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0
+	            ? _settings.PlayerProgress.EquippedKnightStage
+	            : 1;
+		}
 
 
 
@@ -151,11 +152,11 @@ namespace MathQuizLocker
                 var ft = _damageNumbers[i];
                 using (Brush b = new SolidBrush(Color.FromArgb((int)(ft.Opacity * 255), ft.TextColor)))
                 {
-                    g.DrawString(ft.Text, new Font("Segoe UI", 28, FontStyle.Bold), b, ft.Position);
+                    g.DrawString(ft.Text, new Font("Segoe UI", 50, FontStyle.Bold), b, ft.Position);
                 }
                 // Update positions here so they float up smoothly
                 ft.Position.Y += ft.VelocityY;
-                ft.Opacity -= 0.02f;
+                ft.Opacity -= 0.008f;
                 if (ft.Opacity <= 0) _damageNumbers.RemoveAt(i);
             }
 

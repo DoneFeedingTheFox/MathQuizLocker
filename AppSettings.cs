@@ -86,9 +86,8 @@ namespace MathQuizLocker
         public int Level { get; set; } = 1;
         public int CurrentXp { get; set; } = 0;
         public int TotalXp { get; set; } = 0;
-        public int CheatTokens { get; set; } = 0;
-        public int EquippedKnightStage { get; set; } = 0;
-        public List<AbilityState> UnlockedAbilities { get; set; } = new List<AbilityState>();
+        public int EquippedKnightStage { get; set; } = 1;
+    
     }
 
 }

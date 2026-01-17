@@ -1,13 +1,13 @@
 git describe --tags --abbrev=0
 
 git add .
-git commit -m "Optimize for lowend pc"
+git commit -m "Added more graphics, removed a lot of small bugs after the refactoring."
 
 git push origin main
 
 
-git tag v1.9.2
-git push origin v1.9.2
+git tag v1.9.3
+git push origin v1.9.3
 
 
 

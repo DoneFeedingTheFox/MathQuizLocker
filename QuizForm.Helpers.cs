@@ -13,11 +13,12 @@ namespace MathQuizLocker
 
            
             string bgName = "meadow_01.png";
-            if (level > 9) bgName = "castle_01.png";
-            else if (level > 6) bgName = "cave_01.png";
-            else if (level > 3) bgName = "forest_01.png";
+            if (level > 4) bgName = "castle_01.png";
+            else if (level > 3) bgName = "cave_01.png";
+            else if (level > 2) bgName = "forest_01.png";
+			else bgName = "meadow_01.png";
 
-            this.BackgroundImage?.Dispose();
+			this.BackgroundImage?.Dispose();
             this.BackgroundImage = AssetCache.GetImageClone(AssetPaths.Background(bgName));
             this.BackgroundImageLayout = ImageLayout.Stretch;
         }
@@ -27,8 +28,8 @@ namespace MathQuizLocker
             int currentLevel = _settings.PlayerProgress.Level;
 
             // Level 2 player gets item_1 (the reward for reaching lvl 2)
-            _pendingLootItemFile = $"item_{currentLevel - 1}.png";
-            _pendingKnightStage = currentLevel - 1;
+            _pendingLootItemFile = $"item_{currentLevel}.png";
+            _pendingKnightStage = currentLevel;
 
             _picChest.Image = AssetCache.GetImageClone(AssetPaths.Items("chest_01.png"));
             _picChest.Visible = true;
@@ -55,7 +56,11 @@ namespace MathQuizLocker
 
                 // 3. Restart the application
                 Application.Restart();
-            }
+
+				// 4. ESSENTIAL: Close this form and the environment to allow the restart to happen
+				_isInternalClose = true; // Use your flag to skip any 'Are you sure?' prompts
+				Environment.Exit(0);
+			}
         }
 
         private void AnimateChestOpening()
@@ -65,8 +70,8 @@ namespace MathQuizLocker
 
             int currentLevel = _settings.PlayerProgress.Level;
 
-            // Use Level - 1 if your item assets start at item_0.png
-            _pendingLootItemFile = $"item_{currentLevel - 1}.png";
+           
+            _pendingLootItemFile = $"item_{currentLevel}.png";
             _pendingKnightStage = currentLevel;
 
             _animationTimer.Stop();
@@ -215,7 +220,7 @@ namespace MathQuizLocker
         {
             _damageNumbers.Add(new FloatingText
             {
-                Text = amount > 0 ? $"-{amount}" : "MISS",
+              
                 Position = new PointF(pos.X + 50, pos.Y),
                 TextColor = color,
                 Opacity = 1.0f
@@ -238,8 +243,12 @@ namespace MathQuizLocker
             _isAnimating = true;
             _scrambleTicks = 0;
 
-            float centerX = this.ClientSize.Width / 2f;
-            float spacing = 120f;
+			_animationTimer.Stop();
+			_animationTimer.Dispose(); // Kill the old timer
+			_animationTimer = new System.Windows.Forms.Timer { Interval = 10 }; // Create a fresh one
+
+			float centerX = this.ClientSize.Width / 2f;
+            float spacing = 180f;
             float floorY = this.ClientSize.Height * 0.15f;
 
             // Target X lanes: Die 1 (Left), Die 2 (Right), Multiply (Middle)
@@ -255,20 +264,20 @@ namespace MathQuizLocker
             for (int i = 0; i < 3; i++)
             {
                 // Random fall speed
-                _diceVelocities[i] = new PointF(0, _rng.Next(10, 15));
-                _diceRotationAngles[i] = _rng.Next(0, 360);
-            }
+                _diceVelocities[i] = new PointF(0, _rng.Next(20, 39));
+				_diceRotationAngles[i] += 25f;
+			}
 
             _animationTimer.Stop();
-            _animationTimer = new System.Windows.Forms.Timer { Interval = 16 };
-            _animationTimer.Tick += (s, e) => {
+			_animationTimer.Tick += (s, e) => {
+				
                 _scrambleTicks++;
                 bool moving = false;
 
                 for (int i = 0; i < 3; i++)
                 {
                     // Apply Gravity
-                    _diceVelocities[i].Y += 1.5f;
+                    _diceVelocities[i].Y += 3.0f;
                     _diceCurrentPositions[i].Y += _diceVelocities[i].Y;
 
                     // Collision with floor
@@ -277,9 +286,9 @@ namespace MathQuizLocker
                         _diceCurrentPositions[i].Y = floorY;
 
                         // Bounce logic: Reverse Y velocity and reduce it (dampening)
-                        if (Math.Abs(_diceVelocities[i].Y) > 2.0f)
+                        if (Math.Abs(_diceVelocities[i].Y) > 5.0f)
                         {
-                            _diceVelocities[i].Y *= -0.4f; // 40% bounce back
+                            _diceVelocities[i].Y *= -0.3f; // 30% bounce back
                         }
                         else
                         {
@@ -290,7 +299,7 @@ namespace MathQuizLocker
                     // Keep them rotationally spinning only while moving vertically
                     if (Math.Abs(_diceVelocities[i].Y) > 0.1f)
                     {
-                        _diceRotationAngles[i] += 10f;
+                        _diceRotationAngles[i] += 25f;
                         moving = true;
                     }
 
@@ -301,12 +310,12 @@ namespace MathQuizLocker
                 this.Invalidate();
 
                 // End the animation once the dice stop moving and minimum time has passed
-                if (!moving && _scrambleTicks > 45)
+                if (!moving && _scrambleTicks > 20)
                 {
                     _animationTimer.Stop();
-
-                    // 2. Disable physics flag so OnPaint switches to static PictureBox drawing
-                    _isDicePhysicsActive = false;
+					_animationTimer = new System.Windows.Forms.Timer { Interval = 10 };
+					// 2. Disable physics flag so OnPaint switches to static PictureBox drawing
+					_isDicePhysicsActive = false;
                     _isAnimating = false;
 
                     FinalizeDiceLand();

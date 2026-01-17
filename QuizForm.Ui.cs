@@ -148,14 +148,15 @@ namespace MathQuizLocker
 
         private void ShowVictoryScreen()
         {
-          
-     
 
-            // 1. Calculate XP Reward (60% of current level requirement)
-            int requiredXp = XpSystem.GetXpRequiredForNextLevel(_settings.PlayerProgress.Level);
-            int killReward = (int)(requiredXp * 0.6);
+			_awaitingChestOpen = false;
 
-            _settings.PlayerProgress.CurrentXp += killReward;
+			// 1. Calculate XP Reward 
+			int currentLevel = _settings.PlayerProgress.Level;
+			int requiredXp = XpSystem.GetXpRequiredForNextLevel(_settings.PlayerProgress.Level);
+            int killReward = (int)(requiredXp * 0.6); // 60% of required XP for next level
+
+			_settings.PlayerProgress.CurrentXp += killReward;
 
             // 2. Check for Level Up
             if (_settings.PlayerProgress.CurrentXp >= requiredXp)
@@ -163,7 +164,8 @@ namespace MathQuizLocker
                 _settings.PlayerProgress.CurrentXp -= requiredXp;
                 _settings.PlayerProgress.Level++;
                 _awaitingChestOpen = true; // Signals that we should drop loot
-            }
+				ApplyBiomeForCurrentLevel();
+			}
 
             // 3. Update HUD to show new XP/Level
             UpdatePlayerHud();
@@ -181,7 +183,7 @@ namespace MathQuizLocker
                 // If they didn't level up yet, just show the continue buttons
                 _btnContinue.Visible = true;
                 _btnExit.Visible = true;
-                _btnContinue.Focus();
+               
             }
 
             LayoutCombat();

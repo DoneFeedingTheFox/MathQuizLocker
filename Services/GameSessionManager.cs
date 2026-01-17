@@ -87,12 +87,6 @@ namespace MathQuizLocker.Services
             {
                 CorrectCount++;
 
-                int xpGain = XpSystem.XpPerCorrectAnswer;
-                if (XpBoostActive) xpGain *= 2;
-
-                result.XPFirstGained = xpGain;
-                result.LeveledUp = XpSystem.AddXp(_settings.PlayerProgress, xpGain);
-
                 AppSettings.Save(_settings);
                 result.Message = result.LeveledUp ? $"LEVEL UP! Level {_settings.PlayerProgress.Level}!" : $"Correct!";
                 result.MessageColor = result.LeveledUp ? Color.Gold : Color.LimeGreen;
