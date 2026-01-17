@@ -233,21 +233,29 @@ namespace MathQuizLocker
 
         private void AnimateDiceRoll()
         {
+            // 1. Enable specific physics flag so OnPaint draws the falling dice
+            _isDicePhysicsActive = true;
             _isAnimating = true;
             _scrambleTicks = 0;
-            _animationTimer.Interval = 16;
 
             float centerX = this.ClientSize.Width / 2f;
-            // Set starting positions above the screen
+            float spacing = 120f;
+            float floorY = this.ClientSize.Height * 0.15f;
+
+            // Target X lanes: Die 1 (Left), Die 2 (Right), Multiply (Middle)
+            float[] targetX = { centerX - spacing, centerX + spacing, centerX };
+
+            // Initialize positions exactly on their lanes to prevent flickering
             _diceCurrentPositions = new PointF[] {
-        new PointF(centerX - 200, -100),
-        new PointF(centerX + 100, -150),
-        new PointF(centerX - 40, -120)
+        new PointF(targetX[0], -100),
+        new PointF(targetX[1], -150),
+        new PointF(targetX[2], -120)
     };
 
             for (int i = 0; i < 3; i++)
             {
-                _diceVelocities[i] = new PointF(_rng.Next(-8, 9), _rng.Next(10, 20));
+                // Random fall speed
+                _diceVelocities[i] = new PointF(0, _rng.Next(10, 15));
                 _diceRotationAngles[i] = _rng.Next(0, 360);
             }
 
@@ -255,26 +263,52 @@ namespace MathQuizLocker
             _animationTimer = new System.Windows.Forms.Timer { Interval = 16 };
             _animationTimer.Tick += (s, e) => {
                 _scrambleTicks++;
+                bool moving = false;
+
                 for (int i = 0; i < 3; i++)
                 {
-                    _diceVelocities[i].Y += 1.5f; // Gravity
-                    _diceCurrentPositions[i].X += _diceVelocities[i].X;
+                    // Apply Gravity
+                    _diceVelocities[i].Y += 1.5f;
                     _diceCurrentPositions[i].Y += _diceVelocities[i].Y;
-                    _diceRotationAngles[i] += _diceVelocities[i].X * 2f;
 
-                    float floorY = this.ClientSize.Height * 0.15f;
+                    // Collision with floor
                     if (_diceCurrentPositions[i].Y > floorY)
                     {
                         _diceCurrentPositions[i].Y = floorY;
-                        _diceVelocities[i].Y *= -0.45f; // Bounce
+
+                        // Bounce logic: Reverse Y velocity and reduce it (dampening)
+                        if (Math.Abs(_diceVelocities[i].Y) > 2.0f)
+                        {
+                            _diceVelocities[i].Y *= -0.4f; // 40% bounce back
+                        }
+                        else
+                        {
+                            _diceVelocities[i].Y = 0; // Settled
+                        }
                     }
+
+                    // Keep them rotationally spinning only while moving vertically
+                    if (Math.Abs(_diceVelocities[i].Y) > 0.1f)
+                    {
+                        _diceRotationAngles[i] += 10f;
+                        moving = true;
+                    }
+
+                    // Force X to stay at target to keep them in a neat central row
+                    _diceCurrentPositions[i].X = targetX[i];
                 }
+
                 this.Invalidate();
 
-                if (_scrambleTicks > 45)
+                // End the animation once the dice stop moving and minimum time has passed
+                if (!moving && _scrambleTicks > 45)
                 {
                     _animationTimer.Stop();
+
+                    // 2. Disable physics flag so OnPaint switches to static PictureBox drawing
+                    _isDicePhysicsActive = false;
                     _isAnimating = false;
+
                     FinalizeDiceLand();
                 }
             };
@@ -283,9 +317,20 @@ namespace MathQuizLocker
 
         private void FinalizeDiceLand()
         {
+            // 1. Re-calculate the positions for the static controls
             LayoutCombat();
+
+            // 2. IMPORTANT: Make them visible again so OnPaint draws them
+            _die1.Visible = true;
+            _die2.Visible = true;
+            _picMultiply.Visible = true;
+
+            // 3. Ensure the images match the current question
             _die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
             _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
+            _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
+
+            // 4. Force a final redraw to show the static dice
             this.Invalidate();
         }
     }

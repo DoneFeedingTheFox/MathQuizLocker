@@ -20,6 +20,7 @@ namespace MathQuizLocker
         // Animation logic
         private Point _knightOriginalPos;
         private System.Windows.Forms.Timer _animationTimer = new();
+        private bool _isDicePhysicsActive = false;
 
         // Loot & Progression
         private bool _awaitingChestOpen = false;
@@ -88,12 +89,15 @@ namespace MathQuizLocker
 
         protected override void OnPaint(PaintEventArgs e)
         {
+            // High-performance settings for your laptop
             e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
             e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
             e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+
             base.OnPaint(e);
             var g = e.Graphics;
+
+            // Only use AntiAlias for things that really need it (like text or rotation)
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
             // 1. Draw Sprites (Knight and Monster)
@@ -101,28 +105,34 @@ namespace MathQuizLocker
             if (_picMonster?.Image != null) g.DrawImage(_picMonster.Image, GetPaddedBounds(_picMonster.Image, _picMonster.Bounds));
 
             // 2. Draw Health Bars
-            // FIX: Pull player health from _session
             DrawHealthBar(g, _picKnight.Bounds, _session.CurrentPlayerHealth, 100, Color.LimeGreen);
             DrawHealthBar(g, _picMonster.Bounds, _session.CurrentMonsterHealth, _session.MaxMonsterHealth, Color.Red);
 
             // 3. Draw Dice Physics OR Static UI
-            if (_isAnimating)
+            // We use the specific flag _isDicePhysicsActive so they don't show up during melee attacks
+            if (_isDicePhysicsActive)
             {
+                // Use 120f to match your LayoutCombat exactly
+                float diceSize = 120f * (this.ClientSize.Height / 1080f);
+
                 for (int i = 0; i < 3; i++)
                 {
                     Image? img = (i == 0) ? _die1.Image : (i == 1) ? _die2.Image : _picMultiply.Image;
                     if (img == null) continue;
 
                     var state = g.Save();
-                    float size = 100f * (this.ClientSize.Height / 1080f);
-                    g.TranslateTransform(_diceCurrentPositions[i].X + size / 2, _diceCurrentPositions[i].Y + size / 2);
+                    // Center the rotation on the die
+                    g.TranslateTransform(_diceCurrentPositions[i].X + diceSize / 2, _diceCurrentPositions[i].Y + diceSize / 2);
                     g.RotateTransform(_diceRotationAngles[i]);
-                    g.DrawImage(img, -size / 2, -size / 2, size, size);
+
+                    // Draw all 3 at the same size
+                    g.DrawImage(img, -diceSize / 2, -diceSize / 2, diceSize, diceSize);
                     g.Restore(state);
                 }
             }
             else if (_die1?.Visible == true)
             {
+                // Draw the static version once they have landed
                 if (_die1.Image != null) g.DrawImage(_die1.Image, _die1.Bounds);
                 if (_die2.Image != null) g.DrawImage(_die2.Image, _die2.Bounds);
                 if (_picMultiply?.Image != null) g.DrawImage(_picMultiply.Image, _picMultiply.Bounds);
@@ -143,7 +153,8 @@ namespace MathQuizLocker
                 {
                     g.DrawString(ft.Text, new Font("Segoe UI", 28, FontStyle.Bold), b, ft.Position);
                 }
-                ft.Position.Y -= 2;
+                // Update positions here so they float up smoothly
+                ft.Position.Y += ft.VelocityY;
                 ft.Opacity -= 0.02f;
                 if (ft.Opacity <= 0) _damageNumbers.RemoveAt(i);
             }
@@ -151,7 +162,6 @@ namespace MathQuizLocker
             // 6. Draw Game Over Overlay 
             if (_session != null && _session.CurrentPlayerHealth <= 0)
             {
-                // Ensure this ONLY runs when the player is actually defeated
                 using (Brush overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0)))
                 {
                     g.FillRectangle(overlayBrush, this.ClientRectangle);
@@ -159,10 +169,15 @@ namespace MathQuizLocker
             }
         }
 
-
         private void BtnSubmit_Click(object? sender, EventArgs e)
         {
             if (_isAnimating || !int.TryParse(_txtAnswer.Text, out int ans)) return;
+
+            // HIDE DICE IMMEDIATELY
+            _die1.Visible = false;
+            _die2.Visible = false;
+            _picMultiply.Visible = false;
+            this.Invalidate();
             var result = _session.ProcessAnswer(ans, _a, _b);
 
             if (result.IsCorrect)

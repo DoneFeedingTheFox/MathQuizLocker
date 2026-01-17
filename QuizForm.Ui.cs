@@ -205,15 +205,14 @@ namespace MathQuizLocker
             // Dice & Math Sign Positioning (Final Landing Spots)
             int diceSize = (int)(120 * scale);
 
-
-            _picMultiply.Size = new Size((int)(60 * scale), (int)(60 * scale));
+            _picMultiply.Size = new Size(diceSize, diceSize);
             _picMultiply.Location = new Point(w / 2 - _picMultiply.Width / 2, (int)(h * 0.15));
 
             _die1.Size = new Size(diceSize, diceSize);
-            _die1.Location = new Point(_picMultiply.Left - _die1.Width - 20, _picMultiply.Top - 20);
+            _die1.Location = new Point(_picMultiply.Left - _die1.Width - 40, _picMultiply.Top);
 
             _die2.Size = new Size(diceSize, diceSize);
-            _die2.Location = new Point(_picMultiply.Right + 20, _picMultiply.Top - 20);
+            _die2.Location = new Point(_picMultiply.Right + 40, _picMultiply.Top);
 
             // Loot Positioning
             _picChest.Size = new Size((int)(250 * scale), (int)(200 * scale));
