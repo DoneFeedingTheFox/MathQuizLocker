@@ -1,6 +1,7 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
 using MathQuizLocker.Controls;
+using MathQuizLocker.Services;
 
 
 
@@ -14,7 +15,8 @@ namespace MathQuizLocker
         private Label _lblLevel, _lblXpStatus, _lblFeedback, _lblGameOver;
         private Button _btnReset, _btnRestart;
 
-        private void InitializeCombatUi()
+		// Initializes all UI components related to combat
+		private void InitializeCombatUi()
         {
             // 1. Set Form Styles First
             this.SetStyle(ControlStyles.AllPaintingInWmPaint |
@@ -97,19 +99,34 @@ namespace MathQuizLocker
             _btnReset.Click += (s, e) => ResetProgress();
             _btnSubmit.Click += BtnSubmit_Click;
 
-            _btnContinue.Click += (s, e) => {
-                _session.StartNewBattle();
-            
-                _btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
-                _txtAnswer.Visible = _btnSubmit.Visible = true;
-                _die1.Visible = _die2.Visible = _picMultiply.Visible = true; // Ensure these stay true
+			_btnContinue.Click += (s, e) => {
+				// 1. If we are currently showing a chest/loot, it's time for the story
+				if (_awaitingChestOpen)
+				{
+					_btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
 
-                GenerateQuestion();
-                LayoutCombat();
-                this.Invalidate();
-            };
+					// Reset this flag so we don't loop back to story unexpectedly
+					_awaitingChestOpen = false;
 
-            _btnExit.Click += (s, e) =>
+					// Show the story overlay
+					ShowStoryScreen();
+				}
+				else
+				{
+					// 2. Normal path: Start a new battle if no story is pending
+					_session.StartNewBattle();
+
+					_btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
+					_txtAnswer.Visible = _btnSubmit.Visible = true;
+					_die1.Visible = _die2.Visible = _picMultiply.Visible = true;
+
+					GenerateQuestion();
+					LayoutCombat();
+					this.Invalidate();
+				}
+			};
+
+			_btnExit.Click += (s, e) =>
             {
                 AppSettings.Save(_settings);
                 Environment.Exit(0);
@@ -174,23 +191,66 @@ namespace MathQuizLocker
             // 4. Transition UI
             _txtAnswer.Visible = _btnSubmit.Visible = _die1.Visible = _die2.Visible = _picMultiply.Visible = false;
 
-            if (_awaitingChestOpen)
-            {
-                ShowLootDrop();
-            }
-            else
-            {
-                // If they didn't level up yet, just show the continue buttons
-                _btnContinue.Visible = true;
-                _btnExit.Visible = true;
-               
-            }
+			if (_awaitingChestOpen)
+			{
+				ShowLootDrop();
+				// Only show Continue. Exit moves to the Story Screen.
+				_btnContinue.Visible = true;
+				_btnExit.Visible = false;
+			}
+			else
+			{
+				_btnContinue.Visible = true;
+				_btnExit.Visible = true; // Keep Exit here for normal non-levelup fights
+			}
 
-            LayoutCombat();
-        }
+			LayoutCombat();
+		}
+
+		private void ShowStoryScreen()
+		{
+			_isShowingStory = true;
+			ApplyBiomeForCurrentLevel();
+
+			// 1. Hide HUD and combat visuals
+			_picKnight.Image = null;
+			_picMonster.Image = null;
+			_lblLevel.Visible = false;
+			_lblXpStatus.Visible = false;
+
+			// 2. Load the text content
+			_lblStoryText.Text = LocalizationService.GetStory(_settings.PlayerProgress.Level);
+
+			// 3. Dynamic Positioning for the Scroll area
+			int w = this.ClientSize.Width;
+			int h = this.ClientSize.Height;
+
+			// Center the text vertically within the parchment area (~78% down)
+			int textW = (int)(w * 0.7); // Use 70% of width to avoid the rolled edges
+			int textH = (int)(h * 0.12); // Restrict height so it doesn't spill over
+			_lblStoryText.Size = new Size(textW, textH);
+			_lblStoryText.Location = new Point((w - textW) / 2, (int)(h * 0.78));
+			_lblStoryText.Font = new Font("Palatino Linotype", 24, FontStyle.Bold); // Bigger font
+			_lblStoryText.ForeColor = Color.FromArgb(45, 30, 15); // Darker, richer ink color
+
+			// Position buttons at the very bottom edge of the parchment
+			_btnStoryContinue.Location = new Point(w / 2 - _btnStoryContinue.Width - 10, (int)(h * 0.92));
+			_btnStoryExit.Location = new Point(w / 2 + 10, (int)(h * 0.92));
+
+			// 4. Final Visibility Pass
+			_lblStoryText.Visible = true;
+			_btnStoryContinue.Visible = true;
+			_btnStoryExit.Visible = true;
+
+			_lblStoryText.BringToFront();
+			_btnStoryContinue.BringToFront();
+			_btnStoryExit.BringToFront();
+
+			this.Invalidate();
+		}
 
 
-        public void LayoutCombat()
+		public void LayoutCombat()
         {
             if (this.ClientSize.Width == 0 || this.ClientSize.Height == 0) return;
             float scale = this.ClientSize.Height / 1080f;

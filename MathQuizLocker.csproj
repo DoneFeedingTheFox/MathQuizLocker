@@ -23,6 +23,7 @@
   <ItemGroup>
     <Folder Include="Assets\Dice\" />
     <Folder Include="Assets\Monsters\" />
+    <Folder Include="Assets\StoryText\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Velopack" Version="0.0.1298" />

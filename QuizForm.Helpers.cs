@@ -7,23 +7,43 @@ namespace MathQuizLocker
 {
     public partial class QuizForm
     {
-        private void ApplyBiomeForCurrentLevel()
-        {
-            int level = _settings.PlayerProgress.Level;
-
-           
-            string bgName = "meadow_01.png";
-            if (level > 4) bgName = "castle_01.png";
-            else if (level > 3) bgName = "cave_01.png";
-            else if (level > 2) bgName = "forest_01.png";
-			else bgName = "meadow_01.png";
-
+		private void ApplyBiomeForCurrentLevel()
+		{
+			// Dispose old image to save RAM on your i5 laptop
 			this.BackgroundImage?.Dispose();
-            this.BackgroundImage = AssetCache.GetImageClone(AssetPaths.Background(bgName));
-            this.BackgroundImageLayout = ImageLayout.Stretch;
-        }
+			this.BackgroundImage = null;
 
-        private void ShowLootDrop()
+			if (_isShowingStory)
+			{
+				// 1. Force load the scroll image
+				string scrollPath = AssetPaths.Background("scroll_bg.png");
+				var scrollImg = AssetCache.GetImageClone(scrollPath);
+
+				if (scrollImg != null)
+				{
+					this.BackgroundImage = scrollImg;
+					// Use Stretch to ensure the parchment covers the screen
+					this.BackgroundImageLayout = ImageLayout.Stretch;
+				}
+				else
+				{
+					// Fallback color so you can at least see it's working
+					this.BackColor = Color.Maroon;
+				}
+				return;
+			}
+
+			// 2. Normal Combat Biome Logic...
+			int level = _settings.PlayerProgress.Level;
+			string bgName = (level > 4) ? "castle_01.png" :
+							(level > 3) ? "cave_01.png" :
+							(level > 2) ? "forest_01.png" : "meadow_01.png";
+
+			this.BackgroundImage = AssetCache.GetImageClone(AssetPaths.Background(bgName));
+			this.BackgroundImageLayout = ImageLayout.Stretch;
+		}
+
+		private void ShowLootDrop()
         {
             int currentLevel = _settings.PlayerProgress.Level;
 

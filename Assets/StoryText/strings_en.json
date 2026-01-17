@@ -1,0 +1,11 @@
+{
+  "stories": {
+    "level_2": "The journey begins in the Whispering Meadows. A shadow has fallen over the land...",
+    "level_3": "With the slime defeated, the path to the Deep Woods is clear. But a foul stench lingers.",
+    "level_4": "The Forest Guardian was strong, but your resolve was stronger. The ancient Cave awaits."
+  },
+  "ui": {
+    "continue": "Continue Journey",
+    "exit": "Retire to Tavern"
+  }
+}
