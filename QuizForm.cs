@@ -96,38 +96,97 @@ namespace MathQuizLocker
             this.Resize += QuizForm_Resize;
         }
 
+        private Rectangle GetCombatZone()
+        {
+            // Capture the highest point (Health Bars) and lowest point (Feet)
+            int yTop = Math.Min(_picKnight.Top, _picMonster.Top) - 60;
+            int height = Math.Max(_picKnight.Height, _picMonster.Height) + 100;
+
+            // Capture the horizontal span from Knight to Monster
+            int xStart = _picKnight.Left - 50;
+            int width = (_picMonster.Right - xStart) + 100;
+
+            return new Rectangle(xStart, yTop, width, height);
+        }
+
+        private Rectangle GetMonsterArea()
+        {
+            // 1. Define vertical space: Include 60 pixels above for the health bar
+            int yTop = _picMonster.Top - 60;
+            int height = _picMonster.Height + 80;
+
+            // 2. Define horizontal space: Add a small buffer for "shake" animations
+            int xStart = _picMonster.Left - 20;
+            int width = _picMonster.Width + 40;
+
+            return new Rectangle(xStart, yTop, width, height);
+        }
+        private Rectangle GetMeleeArea()
+        {
+            // 1. Find the top-most point (the Health Bar) and the bottom-most point (Knight's feet)
+            // We add a 60-pixel buffer above the knight to capture the health bar
+            int yTop = _picKnight.Top - 60;
+            int height = _picKnight.Height + 80; // Total height including buffer
+
+            // 2. Define the horizontal lane
+            int xStart = Math.Min(_knightOriginalPos.X, _picKnight.Left) - 50;
+            int width = (_picMonster.Right - xStart) + 100;
+
+            return new Rectangle(xStart, yTop, width, height);
+        }
+
+        private Rectangle GetDiceArea()
+        {
+            // These coordinates should match where your dice land in LayoutCombat
+            int w = this.ClientSize.Width;
+            int h = this.ClientSize.Height;
+
+            // Calculate the area containing all three dice
+            int areaWidth = (int)(w * 0.4); // 40% of screen width
+            int areaHeight = (int)(h * 0.2); // 20% of screen height
+            int x = (w - areaWidth) / 2;
+            int y = (int)(h * 0.05); // Near the top
+
+            return new Rectangle(x, y, areaWidth, areaHeight);
+        }
+
         private void CloseStoryAndResume()
-		{
-			_isShowingStory = false;
+        {
+            // 1. MUST BE FIRST: Allow OnPaint to switch back to Game drawing logic
+            _isShowingStory = false;
+            _isAnimating = false;
+            _isDicePhysicsActive = false;
 
-			// 1. Hide Story UI
-			_lblStoryText.Visible = false;
-			_btnStoryContinue.Visible = false;
-			_btnStoryExit.Visible = false;
+            // 2. Hide Story UI
+            _lblStoryText.Visible = false;
+            _btnStoryContinue.Visible = false;
+            _btnStoryExit.Visible = false;
 
-			// 2. Restore Combat UI (This is the missing part!)
-			_txtAnswer.Visible = true;
-			_btnSubmit.Visible = true;
+            // 3. Restore Combat UI & Layers
+            _txtAnswer.Visible = true;
+            _btnSubmit.Visible = true;
+            _lblLevel.Visible = true;
+            _lblXpStatus.Visible = true;
 
-			// 3. Restore HUD
-			_lblLevel.Visible = true;
-			_lblXpStatus.Visible = true;
+            // Ensure sprites are not hidden behind the background
+            _picKnight.BringToFront();
+            _picMonster.BringToFront();
 
-			// 4. Reset World
-			ApplyBiomeForCurrentLevel();
-			SetKnightIdleSprite();
+            // 4. Reset World & Session
+            ApplyBiomeForCurrentLevel(); // This loads the meadow/forest
+            SetKnightIdleSprite();
+            _session.StartNewBattle();
+            SpawnMonster();
 
-			_session.StartNewBattle();
-			SpawnMonster();
-			GenerateQuestion(); // This will put new dice on the screen
+            // 5. Trigger Game Logic
+            // GenerateQuestion calls AnimateDiceRoll(), which sets _isDicePhysicsActive = true
+            GenerateQuestion();
 
-			// 5. Final Touch: Focus the text box so the player can type immediately
-			_txtAnswer.Focus();
+            _txtAnswer.Focus();
+            this.Invalidate(); // Force full refresh
+        }
 
-			this.Invalidate();
-		}
-
-		private void InitStoryUi()
+        private void InitStoryUi()
 		{
 			// 1. Setup Story Text Label
 			_lblStoryText = new Label
@@ -217,17 +276,21 @@ namespace MathQuizLocker
             _picKnight.Image = AssetCache.GetImageClone(path);
         }
 
-		protected override void OnPaint(PaintEventArgs e)
-		{
-            _frameTimer.Restart(); // Start timing the draw call
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            _frameTimer.Restart();
 
+            // 1. If Story Mode is active, draw ONLY the background/overlay and exit
             if (_isShowingStory)
-			{
-				
-				return;
-			}
-			// High-performance settings for your laptop
-			e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
+            {
+                // Let the base class draw the Background (your scroll)
+                base.OnPaint(e);
+                _frameTimer.Stop();
+                _lastFrameMs = _frameTimer.ElapsedMilliseconds;
+                return;
+            }
+            // High-performance settings for your laptop
+            e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
 			e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
 			e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
 

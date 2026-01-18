@@ -19,16 +19,17 @@ namespace MathQuizLocker
 		private void InitializeCombatUi()
         {
             // 1. Set Form Styles First
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint |
-                         ControlStyles.UserPaint |
-                         ControlStyles.OptimizedDoubleBuffer, true);
             this.UpdateStyles();
+            this.SetStyle(ControlStyles.UserPaint, true);
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
 
             this.FormBorderStyle = FormBorderStyle.None;
             this.WindowState = FormWindowState.Maximized;
             this.TopMost = true;
             this.Bounds = Screen.PrimaryScreen.Bounds;
-            this.DoubleBuffered = true;
+       
+
             this.BackColor = Color.FromArgb(30, 30, 30);
 
             // 2. Instantiate ALL objects FIRST (Prevents NullReference errors)

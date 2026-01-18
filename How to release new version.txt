@@ -1,13 +1,13 @@
 git describe --tags --abbrev=0
 
 git add .
-git commit -m "Fixed text wrapping in the story page"
+git commit -m "Optimizing rendering (but introduced bug with dice now showing up)"
 
 git push origin main
 
 
-git tag v1.9.5
-git push origin v1.9.5
+git tag v1.9.6
+git push origin v1.9.6
 
 
 

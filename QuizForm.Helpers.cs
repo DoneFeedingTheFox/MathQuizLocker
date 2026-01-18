@@ -259,90 +259,82 @@ namespace MathQuizLocker
 
         private void AnimateDiceRoll()
         {
-            // 1. Enable specific physics flag so OnPaint draws the falling dice
+            // 1. HARD RESET of all animation states
             _isDicePhysicsActive = true;
             _isAnimating = true;
-            _scrambleTicks = 0;
+            _scrambleTicks = 0; // Ensure this is 0 so the "ticks > 20" check doesn't trip early
 
-			_animationTimer.Stop();
-			_animationTimer.Dispose(); // Kill the old timer
-			_animationTimer = new System.Windows.Forms.Timer { Interval = 10 }; // Create a fresh one
+            _animationTimer.Stop();
+            _animationTimer.Interval = 15;
 
-			float centerX = this.ClientSize.Width / 2f;
+            // 2. Re-calculate positions to ensure they are relative to current screen size
+            float centerX = this.ClientSize.Width / 2f;
             float spacing = 180f;
             float floorY = this.ClientSize.Height * 0.15f;
 
-            // Target X lanes: Die 1 (Left), Die 2 (Right), Multiply (Middle)
             float[] targetX = { centerX - spacing, centerX + spacing, centerX };
 
-            // Initialize positions exactly on their lanes to prevent flickering
+            // Start them higher up to ensure they have "falling" momentum
             _diceCurrentPositions = new PointF[] {
-        new PointF(targetX[0], -100),
-        new PointF(targetX[1], -150),
-        new PointF(targetX[2], -120)
+        new PointF(targetX[0], -200),
+        new PointF(targetX[1], -250),
+        new PointF(targetX[2], -220)
     };
 
             for (int i = 0; i < 3; i++)
             {
-                // Random fall speed
-                _diceVelocities[i] = new PointF(0, _rng.Next(20, 39));
-				_diceRotationAngles[i] += 25f;
-			}
+                // Give them a strong initial downward push
+                _diceVelocities[i] = new PointF(0, _rng.Next(25, 45));
+                _diceRotationAngles[i] = _rng.Next(0, 360);
+            }
 
-            _animationTimer.Stop();
-			_animationTimer.Tick += (s, e) => {
-				
+            _animationTimer.Tick -= DiceTickHandler;
+            _animationTimer.Tick += DiceTickHandler;
+            _animationTimer.Start();
+
+            void DiceTickHandler(object? s, EventArgs e)
+            {
                 _scrambleTicks++;
-                bool moving = false;
+                bool isAnyDieMoving = false; // Use a clearer flag
 
                 for (int i = 0; i < 3; i++)
                 {
-                    // Apply Gravity
-                    _diceVelocities[i].Y += 3.0f;
+                    _diceVelocities[i].Y += 3.5f; // Gravity
                     _diceCurrentPositions[i].Y += _diceVelocities[i].Y;
 
-                    // Collision with floor
                     if (_diceCurrentPositions[i].Y > floorY)
                     {
                         _diceCurrentPositions[i].Y = floorY;
-
-                        // Bounce logic: Reverse Y velocity and reduce it (dampening)
                         if (Math.Abs(_diceVelocities[i].Y) > 5.0f)
                         {
-                            _diceVelocities[i].Y *= -0.3f; // 30% bounce back
+                            _diceVelocities[i].Y *= -0.3f; // Bounce
                         }
                         else
                         {
-                            _diceVelocities[i].Y = 0; // Settled
+                            _diceVelocities[i].Y = 0;
                         }
                     }
 
-                    // Keep them rotationally spinning only while moving vertically
-                    if (Math.Abs(_diceVelocities[i].Y) > 0.1f)
+                    // If a die is still above floor or has velocity, it's moving
+                    if (_diceCurrentPositions[i].Y < floorY || Math.Abs(_diceVelocities[i].Y) > 0.1f)
                     {
                         _diceRotationAngles[i] += 25f;
-                        moving = true;
+                        isAnyDieMoving = true;
                     }
-
-                    // Force X to stay at target to keep them in a neat central row
-                    _diceCurrentPositions[i].X = targetX[i];
                 }
 
-                this.Invalidate();
+                this.Invalidate(GetDiceArea());
 
-                // End the animation once the dice stop moving and minimum time has passed
-                if (!moving && _scrambleTicks > 20)
+                // FIX: Ensure they have at least 20 ticks of air-time before settling
+                if (!isAnyDieMoving && _scrambleTicks > 20)
                 {
                     _animationTimer.Stop();
-					_animationTimer = new System.Windows.Forms.Timer { Interval = 10 };
-					// 2. Disable physics flag so OnPaint switches to static PictureBox drawing
-					_isDicePhysicsActive = false;
+                    _animationTimer.Tick -= DiceTickHandler;
+                    _isDicePhysicsActive = false;
                     _isAnimating = false;
-
                     FinalizeDiceLand();
                 }
-            };
-            _animationTimer.Start();
+            }
         }
 
         private void FinalizeDiceLand()
