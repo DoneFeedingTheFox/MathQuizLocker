@@ -56,8 +56,13 @@ namespace MathQuizLocker
         private System.Diagnostics.Stopwatch _frameTimer = new System.Diagnostics.Stopwatch();
         private long _lastFrameMs = 0;
 
-        // Enable double buffering to reduce flicker
-        protected override CreateParams CreateParams
+		// Countdown Timer for answering questions
+		private System.Windows.Forms.Timer _countdownTimer = new();
+		private int _secondsRemaining = 10;
+		private Label _lblTimer; 
+
+		// Enable double buffering to reduce flicker
+		protected override CreateParams CreateParams
         {
             get
             {
@@ -67,7 +72,27 @@ namespace MathQuizLocker
             }
         }
 
-        public QuizForm(AppSettings settings)
+		private void CountdownTimer_Tick(object? sender, EventArgs e)
+		{
+			_secondsRemaining--;
+			_lblTimer.Text = $"{_secondsRemaining}";
+
+			if (_secondsRemaining <= 0)
+			{
+				_countdownTimer.Stop();
+				_lblTimer.Visible = false;
+
+				// Disable input and trigger monster strike
+				_txtAnswer.Enabled = false;
+				_btnSubmit.Enabled = false;
+
+				int failureDmg = _a * _b; // Use the math result as punishment damage
+				AnimateMonsterAttack(failureDmg);
+			}
+		}
+
+
+		public QuizForm(AppSettings settings)
         {
             _settings = settings;
             _quizEngine = new QuizEngine(_settings);
@@ -382,8 +407,11 @@ namespace MathQuizLocker
         {
             if (_isAnimating || !int.TryParse(_txtAnswer.Text, out int ans)) return;
 
-            // HIDE DICE IMMEDIATELY
-            _die1.Visible = false;
+			_countdownTimer.Stop(); // Stop the clock immediately
+			_lblTimer.Visible = false;
+
+			// HIDE DICE IMMEDIATELY
+			_die1.Visible = false;
             _die2.Visible = false;
             _picMultiply.Visible = false;
             this.Invalidate();

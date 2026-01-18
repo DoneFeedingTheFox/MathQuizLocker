@@ -190,7 +190,7 @@ namespace MathQuizLocker
             int tier = Math.Max(1, _settings.MaxFactorUnlocked);
 
 
-			_currentMonsterName = tier < 3 ? "goblin" : tier < 4 ? "slime" : tier < 7 ? "orc" : "dragon";
+			_currentMonsterName = tier < 3 ? "goblin" : tier < 5 ? "skeleton" : tier < 6 ? "slime" : tier < 7 ? "orc" : "dragon";
 			UpdateMonsterSprite("idle");
         }
 
@@ -211,7 +211,14 @@ namespace MathQuizLocker
 
         private void GenerateQuestion()
         {
-            var q = _quizEngine.GetNextQuestion();
+
+			_secondsRemaining = 10;
+			if (_lblTimer != null)
+			{
+				_lblTimer.Text = "10";
+				_lblTimer.Visible = false; // Keep hidden while dice are rolling
+			}
+			var q = _quizEngine.GetNextQuestion();
             _a = q.a;
             _b = q.b;
 
@@ -353,8 +360,26 @@ namespace MathQuizLocker
             _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
             _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
 
-            // 4. Force a final redraw to show the static dice
-            this.Invalidate();
+			// 4. RESET AND START THE TIMER
+			// Stop any existing timer to prevent double-ticking
+			_countdownTimer.Stop();
+
+			// Reset the internal counter to a full 10 seconds
+			_secondsRemaining = 10;
+
+			// 5. Restart the timer and enable input
+			_lblTimer.Text = "10";
+			_lblTimer.Visible = true;
+			_txtAnswer.Enabled = true;
+			_btnSubmit.Enabled = true;
+	
+
+			_txtAnswer.Focus();
+
+			_countdownTimer.Start();
+
+
+			this.Invalidate();
         }
     }
 }

@@ -18,8 +18,27 @@ namespace MathQuizLocker
 		// Initializes all UI components related to combat
 		private void InitializeCombatUi()
         {
-            // 1. Set Form Styles First
-            this.UpdateStyles();
+
+			_lblTimer = new Label
+			{
+				Name = "_lblTimer",
+			
+				ForeColor = Color.FromArgb(60, 40, 20),
+			
+				Font = new Font("Palatino Linotype", 48, FontStyle.Bold),
+				TextAlign = ContentAlignment.MiddleCenter,
+				BackColor = Color.Transparent,
+				Visible = false,
+				AutoSize = true
+			};
+			this.Controls.Add(_lblTimer);
+			_lblTimer.BringToFront();
+
+			// Configure the timer object
+			_countdownTimer.Interval = 1000; // 1 second
+			_countdownTimer.Tick += CountdownTimer_Tick;
+			// 1. Set Form Styles First
+			this.UpdateStyles();
             this.SetStyle(ControlStyles.UserPaint, true);
             this.SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             this.SetStyle(ControlStyles.AllPaintingInWmPaint, true);
@@ -29,8 +48,9 @@ namespace MathQuizLocker
             this.TopMost = true;
             this.Bounds = Screen.PrimaryScreen.Bounds;
        
-
             this.BackColor = Color.FromArgb(30, 30, 30);
+
+
 
             // 2. Instantiate ALL objects FIRST (Prevents NullReference errors)
             _picKnight = new DoubleBufferedPictureBox { SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Transparent };
@@ -280,8 +300,11 @@ namespace MathQuizLocker
             _picMonster.Size = new Size((int)(450 * scale), (int)(550 * scale));
             _picMonster.Location = new Point((int)(w * 0.65), (int)(h * 0.90 - _picMonster.Height));
 
-            // Dice & Math Sign Positioning (Final Landing Spots)
-            int diceSize = (int)(120 * scale);
+			// Timer Positioning
+			_lblTimer.Location = new Point(w / 2 - _lblTimer.Width / 2, _picMultiply.Bottom + 20);
+
+			// Dice & Math Sign Positioning (Final Landing Spots)
+			int diceSize = (int)(120 * scale);
 
             _picMultiply.Size = new Size(diceSize, diceSize);
             _picMultiply.Location = new Point(w / 2 - _picMultiply.Width / 2, (int)(h * 0.15));

@@ -5,13 +5,13 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "Reworked the quiz engine for more varied questions"
+git commit -m "Added goblins to the game and a simple storyline, Language for story is currently Norwegian"
 
 git push origin main
 
 
-git tag v1.9.8
-git push origin v1.9.8
+git tag v1.9.9
+git push origin v1.9.9
 
 
 
