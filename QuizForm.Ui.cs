@@ -225,12 +225,17 @@ namespace MathQuizLocker
 			int w = this.ClientSize.Width;
 			int h = this.ClientSize.Height;
 
-			// Center the text vertically within the parchment area (~78% down)
-			int textW = (int)(w * 0.7); // Use 70% of width to avoid the rolled edges
-			int textH = (int)(h * 0.12); // Restrict height so it doesn't spill over
-			_lblStoryText.Size = new Size(textW, textH);
-			_lblStoryText.Location = new Point((w - textW) / 2, (int)(h * 0.78));
-			_lblStoryText.Font = new Font("Palatino Linotype", 24, FontStyle.Bold); // Bigger font
+      
+
+
+          
+            // Center the text vertically within the parchment area (~78% down)
+            int textWidth = (int)(w * 0.65); // 65% of screen width keeps it away from scroll edges
+            int textHeight = (int)(h * 0.15); // Gives enough vertical room for multiple lines
+            _lblStoryText.Size = new Size(textWidth, textHeight);
+            _lblStoryText.Location = new Point((w - textWidth) / 2, (int)(h * 0.76)); // Slightly higher to allow wrapping
+
+            _lblStoryText.Font = new Font("Palatino Linotype", 24, FontStyle.Bold); // Bigger font
 			_lblStoryText.ForeColor = Color.FromArgb(45, 30, 15); // Darker, richer ink color
 
 			// Position buttons at the very bottom edge of the parchment

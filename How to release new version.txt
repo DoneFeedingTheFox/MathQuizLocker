@@ -1,7 +1,7 @@
 git describe --tags --abbrev=0
 
 git add .
-git commit -m "Added framecounter to help find the slowdown"
+git commit -m "Fixed text wrapping in the story page"
 
 git push origin main
 

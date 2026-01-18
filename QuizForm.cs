@@ -137,8 +137,10 @@ namespace MathQuizLocker
 				TextAlign = ContentAlignment.MiddleCenter,
 				BackColor = Color.Transparent,
 				Font = new Font("Palatino Linotype", 18, FontStyle.Bold),
-				Visible = false
-			};
+				Visible = false,
+				AutoSize = false,      
+                AutoEllipsis = true   
+            };
 
 			// 2. Setup "Continue" Button
 			_btnStoryContinue = new Button
