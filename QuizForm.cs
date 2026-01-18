@@ -17,7 +17,7 @@ namespace MathQuizLocker
         private int _a, _b;
       
         private bool _isAnimating = false, _isInternalClose = false;
-        private string _currentMonsterName = "slime";
+        private string _currentMonsterName = "goblin";
 
         // Animation logic
         private Point _knightOriginalPos;
@@ -83,9 +83,9 @@ namespace MathQuizLocker
             this.SetStyle(ControlStyles.Opaque, false);
 
             // Initialize Custom Game UI
-            LocalizationService.LoadLanguage("en");
-            InitializeCombatUi(); // Ensure your combat buttons/textboxes are created
-            InitStoryUi(); // Build the story labels and buttons
+            LocalizationService.LoadLanguage("no");
+            InitializeCombatUi(); 
+            InitStoryUi(); 
 
             // Set initial progression state
             _equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0

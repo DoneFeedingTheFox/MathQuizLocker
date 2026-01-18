@@ -9,20 +9,23 @@ namespace MathQuizLocker.Services
 	{
 		private static Dictionary<string, string> _storyText = new();
 
+		// Try this more robust reading method in LocalizationService.cs
 		public static void LoadLanguage(string langCode)
 		{
-			// Update this path to match your exact folder structure
-			string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-									   "Assets", "StoryText", $"strings_{langCode}.json");
+			string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "StoryText", $"strings_{langCode}.json");
 
 			if (File.Exists(path))
 			{
 				try
 				{
-					var json = File.ReadAllText(path);
-					using var doc = JsonDocument.Parse(json);
+					// This version detects the encoding automatically based on the file content
+					string json;
+					using (var reader = new StreamReader(path, System.Text.Encoding.UTF8, true))
+					{
+						json = reader.ReadToEnd();
+					}
 
-					// Navigate to the "stories" section of your JSON
+					using var doc = JsonDocument.Parse(json);
 					var stories = doc.RootElement.GetProperty("stories");
 
 					_storyText.Clear();

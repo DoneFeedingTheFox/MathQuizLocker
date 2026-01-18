@@ -192,7 +192,7 @@ namespace MathQuizLocker
 				}
 
 				_awaitingChestOpen = true;
-				ApplyBiomeForCurrentLevel();
+			
 			}
 
 			// 3. Update HUD to show new XP/Level

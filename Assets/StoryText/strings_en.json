@@ -1,8 +1,15 @@
-{
+﻿{
   "stories": {
-    "level_2": "The journey begins in the Whispering Meadows. A shadow has fallen over the land...",
-    "level_3": "With the slime defeated, the path to the Deep Woods is clear. But a foul stench lingers.",
-    "level_4": "The Forest Guardian was strong, but your resolve was stronger. The ancient Cave awaits."
+    "level_2": "The village pies have vanished, and small, green footprints lead6 straight into the forest. You must track the Goblins to their hideout and find a way to stop their King from causing more mischief.",
+    "level_3": "With the forest behind you, the air turns chilly and the ground begins to shake. Strange Skeletons are waking up, and you will need to find the Bone Commander to make the graveyard peaceful once again.",
+    "level_4": "A thick fog leads you into a valley covered in sticky, white silk. Thousands of Spiders watch from the trees, and rumors say a Great Web-Spinner is waiting for someone to wander into its trap.",
+    "level_5": "The only way forward is across a massive stone bridge, but a loud snoring echoes from underneath. A Troll has claimed the crossing as his own, and you must figure out how to get past his Heavy Club.",
+    "level_6": "You’ve discovered a cave where the walls seem to melt and wiggle! Bouncy Slimes fill every tunnel, and somewhere in the deep, a Giant Blue Ooze is growing larger by the minute.",
+    "level_7": "The path climbs high into the clouds where the Harpies fly. You will have to keep your footing against the swirling winds and find the Sky Queen to earn safe passage over the mountains.",
+    "level_8": "You’ve entered a silent garden where the statues look frighteningly real. Watch out for Gargoyles hiding in plain sight, and be ready to face the Stone Guardian who protects the castle gates.",
+    "level_9": "You are finally inside the Big Bad’s castle, but the floor is turning to lava! Fire Sprites are dancing in the hallways, and a Lava Golem stands between you and the inner stairs.",
+    "level_10": "The throne room is close, but the hallway is filled with floating suits of armor. The Ghostly Knight guards this passage, and he only lets those with the bravest hearts pass through his door.",
+    "level_11": "At the top of the highest tower, the Big Red Dragon guards the stolen Golden Crown. This is your final challenge—you must use everything you've learned to defeat the Dragon and save the kingdom!"
   },
   "ui": {
     "continue": "Continue Journey",

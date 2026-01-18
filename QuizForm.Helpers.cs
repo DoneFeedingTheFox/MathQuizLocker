@@ -38,7 +38,8 @@ namespace MathQuizLocker
 			int level = _settings.PlayerProgress.Level;
 			string bgName = (level > 4) ? "castle_01.png" :
 							(level > 3) ? "cave_01.png" :
-							(level > 2) ? "forest_01.png" : "meadow_01.png";
+							(level > 2) ? "forest_01.png" :
+							(level > 1) ? "swamp_01.png" : "meadow_01.png";
 
 			this.BackgroundImage = AssetCache.GetImageClone(AssetPaths.Background(bgName));
 			this.BackgroundImageLayout = ImageLayout.Stretch;
@@ -187,10 +188,10 @@ namespace MathQuizLocker
         private void SpawnMonster()
         {
             int tier = Math.Max(1, _settings.MaxFactorUnlocked);
-    
 
-            _currentMonsterName = tier < 4 ? "slime" : tier < 7 ? "orc" : "dragon";
-            UpdateMonsterSprite("idle");
+
+			_currentMonsterName = tier < 3 ? "goblin" : tier < 4 ? "slime" : tier < 7 ? "orc" : "dragon";
+			UpdateMonsterSprite("idle");
         }
 
         private void UpdateMonsterSprite(string state)
