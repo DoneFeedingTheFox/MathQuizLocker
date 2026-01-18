@@ -176,17 +176,27 @@ namespace MathQuizLocker
 
 			_settings.PlayerProgress.CurrentXp += killReward;
 
-            // 2. Check for Level Up
-            if (_settings.PlayerProgress.CurrentXp >= requiredXp)
-            {
-                _settings.PlayerProgress.CurrentXp -= requiredXp;
-                _settings.PlayerProgress.Level++;
-                _awaitingChestOpen = true; // Signals that we should drop loot
+			// 2. Check for Level Up
+			if (_settings.PlayerProgress.CurrentXp >= requiredXp)
+			{
+				_settings.PlayerProgress.CurrentXp -= requiredXp;
+				_settings.PlayerProgress.Level++;
+
+				// Increase the math limit but cap it at 10
+				if (_settings.MaxFactorUnlocked < 10)
+				{
+					_settings.MaxFactorUnlocked++;
+
+					// CRITICAL: This populates the dictionary with the next set of numbers (e.g., the 3s)
+					_quizEngine.InitializeForCurrentLevel();
+				}
+
+				_awaitingChestOpen = true;
 				ApplyBiomeForCurrentLevel();
 			}
 
-            // 3. Update HUD to show new XP/Level
-            UpdatePlayerHud();
+			// 3. Update HUD to show new XP/Level
+			UpdatePlayerHud();
             AppSettings.Save(_settings);
 
             // 4. Transition UI

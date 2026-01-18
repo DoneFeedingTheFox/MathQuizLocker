@@ -5,13 +5,13 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "Optimizing rendering (but introduced bug with dice now showing up)"
+git commit -m "Reworked the quiz engine for more varied questions"
 
 git push origin main
 
 
-git tag v1.9.7
-git push origin v1.9.7
+git tag v1.9.8
+git push origin v1.9.8
 
 
 

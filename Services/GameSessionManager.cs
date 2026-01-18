@@ -35,11 +35,9 @@ namespace MathQuizLocker.Services
 
         public GameSessionManager(AppSettings settings, QuizEngine engine)
         {
-            _settings = settings;
-            _quizEngine = engine;
-
-            // CRITICAL: Set player health to 100 BEFORE starting anything else
-            // This prevents the "Grey Overlay" in OnPaint on launch.
+			// Dependency Injection
+			_settings = settings;
+            _quizEngine = engine;                  
             _playerHealth = MaxPlayerHealth;
 
             StartNewBattle();

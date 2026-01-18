@@ -69,14 +69,14 @@ namespace MathQuizLocker
             var confirm = MessageBox.Show("Reset all progress for testing?", "Debug Reset", MessageBoxButtons.YesNo);
             if (confirm == DialogResult.Yes)
             {
-                // 1. Wipe the progress object
-                _settings.PlayerProgress = new PlayerProgress();
+				// 1. Wipe the progress object
+				_settings.ResetProgress();
 
-                // 2. Pass _settings as the argument to the static Save method
-                AppSettings.Save(_settings);
+				// 2. Re-initialize the quiz engine for level 1
+				_quizEngine.InitializeForCurrentLevel();
 
-                // 3. Restart the application
-                Application.Restart();
+				// 3. Restart the application
+				Application.Restart();
 
 				// 4. ESSENTIAL: Close this form and the environment to allow the restart to happen
 				_isInternalClose = true; // Use your flag to skip any 'Are you sure?' prompts
