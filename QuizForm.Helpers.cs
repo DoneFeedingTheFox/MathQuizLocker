@@ -9,11 +9,12 @@ namespace MathQuizLocker
     {
 		private void ApplyBiomeForCurrentLevel()
 		{
-			// Dispose old image to save RAM on your i5 laptop
-			this.BackgroundImage?.Dispose();
-			this.BackgroundImage = null;
+            // Dispose old image to save RAM on your i5 laptop
+            var oldBg = this.BackgroundImage;
+            this.BackgroundImage = null;
+            oldBg?.Dispose();
 
-			if (_isShowingStory)
+            if (_isShowingStory)
 			{
 				// 1. Force load the scroll image
 				string scrollPath = AssetPaths.Background("scroll_bg.png");

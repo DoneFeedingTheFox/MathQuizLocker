@@ -49,8 +49,15 @@ namespace MathQuizLocker
 		private Button _btnStoryContinue, _btnStoryExit;
 		private bool _isShowingStory = false;
 
-		// Enable double buffering to reduce flicker
-		protected override CreateParams CreateParams
+        // FPS Tracking
+        private int _frameCount = 0;
+        private int _fps = 0;
+        private DateTime _lastFpsUpdate = DateTime.Now;
+        private System.Diagnostics.Stopwatch _frameTimer = new System.Diagnostics.Stopwatch();
+        private long _lastFrameMs = 0;
+
+        // Enable double buffering to reduce flicker
+        protected override CreateParams CreateParams
         {
             get
             {
@@ -66,18 +73,30 @@ namespace MathQuizLocker
             _quizEngine = new QuizEngine(_settings);
             _session = new GameSessionManager(_settings, _quizEngine);
 
-            // 1. MUST BE FIRST: Create the actual control objects
-            InitializeCombatUi();
-			LocalizationService.LoadLanguage("en");
-			InitStoryUi();
+          
 
-			// 2. Set initial non-UI values
-			_equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0
-	            ? _settings.PlayerProgress.EquippedKnightStage
-	            : 1;
-		}
+            // Performance Settings
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint |
+                         ControlStyles.UserPaint |
+                         ControlStyles.OptimizedDoubleBuffer, true);
+            this.SetStyle(ControlStyles.Opaque, false);
 
-		private void CloseStoryAndResume()
+            // Initialize Custom Game UI
+            LocalizationService.LoadLanguage("en");
+            InitializeCombatUi(); // Ensure your combat buttons/textboxes are created
+            InitStoryUi(); // Build the story labels and buttons
+
+            // Set initial progression state
+            _equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0
+                ? _settings.PlayerProgress.EquippedKnightStage
+                : 1;
+
+            // Handle resizing to keep the story parchment aligned on different laptops
+            this.Resize += QuizForm_Resize;
+        }
+
+        private void CloseStoryAndResume()
 		{
 			_isShowingStory = false;
 
@@ -158,9 +177,23 @@ namespace MathQuizLocker
 			this.Controls.Add(_btnStoryContinue);
 			this.Controls.Add(_btnStoryExit);
 		}
-		
 
-		protected override void OnShown(EventArgs e)
+        private void QuizForm_Resize(object? sender, EventArgs e)
+        {
+            // If the game is in story mode, reposition the scroll text/buttons
+            if (_isShowingStory)
+            {
+                ShowStoryScreen();
+            }
+            else
+            {
+                // If in combat, ensure sprites and dice are in the right zones
+                LayoutCombat();
+            }
+        }
+
+
+        protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
 
@@ -184,8 +217,9 @@ namespace MathQuizLocker
 
 		protected override void OnPaint(PaintEventArgs e)
 		{
-		
-			if (_isShowingStory)
+            _frameTimer.Restart(); // Start timing the draw call
+
+            if (_isShowingStory)
 			{
 				
 				return;
@@ -268,7 +302,24 @@ namespace MathQuizLocker
 					g.FillRectangle(overlayBrush, this.ClientRectangle);
 				}
 			}
-		}
+            _frameTimer.Stop();
+            _lastFrameMs = _frameTimer.ElapsedMilliseconds;
+
+            // Calculate FPS once per second
+            _frameCount++;
+            if ((DateTime.Now - _lastFpsUpdate).TotalSeconds >= 1)
+            {
+                _fps = _frameCount;
+                _frameCount = 0;
+                _lastFpsUpdate = DateTime.Now;
+            }
+
+            // Draw the Debug Overlay in the top-right corner
+            string debugInfo = $"FPS: {_fps} | Draw Time: {_lastFrameMs}ms";
+            e.Graphics.DrawString(debugInfo, new Font("Consolas", 12, FontStyle.Bold),
+                                 Brushes.Yellow, this.ClientSize.Width - 250, 10);
+        }
+        
 
 		private void BtnSubmit_Click(object? sender, EventArgs e)
         {
