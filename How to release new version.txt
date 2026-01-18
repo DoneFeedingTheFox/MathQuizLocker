@@ -1,13 +1,17 @@
 git describe --tags --abbrev=0
 
+git fetch origin
+git reset --hard origin/main
+
+
 git add .
 git commit -m "Optimizing rendering (but introduced bug with dice now showing up)"
 
 git push origin main
 
 
-git tag v1.9.6
-git push origin v1.9.6
+git tag v1.9.7
+git push origin v1.9.7
 
 
 

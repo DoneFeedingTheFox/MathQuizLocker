@@ -84,33 +84,35 @@ namespace MathQuizLocker
 			}
         }
 
-        private void AnimateChestOpening()
-        {
-            _isChestOpening = true;
-            _chestShakeTicks = 0;
+		private void AnimateChestOpening()
+		{
+			_isChestOpening = true;
+			_chestShakeTicks = 0;
 
-            int currentLevel = _settings.PlayerProgress.Level;
+			int currentLevel = _settings.PlayerProgress.Level;
+			_pendingLootItemFile = $"item_{currentLevel}.png";
+			_pendingKnightStage = currentLevel;
 
-           
-            _pendingLootItemFile = $"item_{currentLevel}.png";
-            _pendingKnightStage = currentLevel;
+			_animationTimer.Stop();
+			_animationTimer.Tick -= ChestTickHandler;
 
-            _animationTimer.Stop();
-            _animationTimer = new System.Windows.Forms.Timer { Interval = 30 };
-            _animationTimer.Tick += (s, e) =>
-            {
-                _chestShakeTicks++;
+			_animationTimer.Interval = 30;
+			_animationTimer.Tick += ChestTickHandler;
+			_animationTimer.Start();
 
-                // Phase 1: Shake the chest (Anticipation)
-                if (_chestShakeTicks < 20)
-                {
-                    _picChest.Left += _rng.Next(-5, 6);
-                }
-                else if (_chestShakeTicks == 20)
-                {
-                    _picChest.Image = AssetCache.GetImageClone(AssetPaths.Items("chest_open_01.png"));
+			void ChestTickHandler(object? s, EventArgs e)
+			{
+				_chestShakeTicks++;
 
-                    var lootImg = AssetCache.GetImageClone(AssetPaths.Items(_pendingLootItemFile));
+				if (_chestShakeTicks < 20)
+				{
+					_picChest.Left += _rng.Next(-5, 6);
+				}
+				else if (_chestShakeTicks == 20)
+				{
+					_picChest.Image = AssetCache.GetImageClone(AssetPaths.Items("chest_open_01.png"));
+
+					var lootImg = AssetCache.GetImageClone(AssetPaths.Items(_pendingLootItemFile));
                     if (lootImg != null)
                     {
                         _picLoot.Image = lootImg;
@@ -142,13 +144,13 @@ namespace MathQuizLocker
                 else if (_chestShakeTicks > 50)
                 {
                     _animationTimer.Stop();
-                    _isChestOpening = false;
+					_animationTimer.Tick -= ChestTickHandler;
+					_isChestOpening = false;
                 }
 
-                // Force the form to redraw the new positions
                 this.Invalidate();
-            };
-            _animationTimer.Start();
+            }
+        
         }
 
         private Rectangle GetPaddedBounds(Image img, Rectangle target)
@@ -212,11 +214,9 @@ namespace MathQuizLocker
             _a = q.a;
             _b = q.b;
 
-            // Load the images into the controls before the animation starts
-            _die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
+			// Set dice images
+			_die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
             _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
-
-            // Ensure this path matches your "multiply.png" filename in the Assets/Dice folder
             _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
             AnimateDiceRoll();
 
@@ -259,8 +259,8 @@ namespace MathQuizLocker
 
         private void AnimateDiceRoll()
         {
-            // 1. HARD RESET of all animation states
-            _isDicePhysicsActive = true;
+			// 1. Hide the static dice controls during animation
+			_isDicePhysicsActive = true;
             _isAnimating = true;
             _scrambleTicks = 0; // Ensure this is 0 so the "ticks > 20" check doesn't trip early
 

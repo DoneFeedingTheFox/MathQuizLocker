@@ -109,18 +109,6 @@ namespace MathQuizLocker
             return new Rectangle(xStart, yTop, width, height);
         }
 
-        private Rectangle GetMonsterArea()
-        {
-            // 1. Define vertical space: Include 60 pixels above for the health bar
-            int yTop = _picMonster.Top - 60;
-            int height = _picMonster.Height + 80;
-
-            // 2. Define horizontal space: Add a small buffer for "shake" animations
-            int xStart = _picMonster.Left - 20;
-            int width = _picMonster.Width + 40;
-
-            return new Rectangle(xStart, yTop, width, height);
-        }
         private Rectangle GetMeleeArea()
         {
             // 1. Find the top-most point (the Health Bar) and the bottom-most point (Knight's feet)
@@ -143,11 +131,11 @@ namespace MathQuizLocker
 
             // Calculate the area containing all three dice
             int areaWidth = (int)(w * 0.4); // 40% of screen width
-            int areaHeight = (int)(h * 0.2); // 20% of screen height
+            int areaHeight = (int)(h * 0.25); // 25% of screen height
             int x = (w - areaWidth) / 2;
-            int y = (int)(h * 0.05); // Near the top
+			int y = 0;
 
-            return new Rectangle(x, y, areaWidth, areaHeight);
+			return new Rectangle(x, y, areaWidth, areaHeight);
         }
 
         private void CloseStoryAndResume()
@@ -168,19 +156,23 @@ namespace MathQuizLocker
             _lblLevel.Visible = true;
             _lblXpStatus.Visible = true;
 
-            // Ensure sprites are not hidden behind the background
-            _picKnight.BringToFront();
-            _picMonster.BringToFront();
+			// Ensure sprites are at back
+			_picKnight.SendToBack();
+			_picMonster.SendToBack();
+			_txtAnswer.BringToFront();
+			_btnSubmit.BringToFront();
+			_lblFeedback.BringToFront();
 
-            // 4. Reset World & Session
-            ApplyBiomeForCurrentLevel(); // This loads the meadow/forest
+			// 4. Reset World & Session
+			ApplyBiomeForCurrentLevel(); 
             SetKnightIdleSprite();
             _session.StartNewBattle();
             SpawnMonster();
 
             // 5. Trigger Game Logic
             // GenerateQuestion calls AnimateDiceRoll(), which sets _isDicePhysicsActive = true
-            GenerateQuestion();
+   
+			GenerateQuestion();
 
             _txtAnswer.Focus();
             this.Invalidate(); // Force full refresh
