@@ -7,45 +7,62 @@ namespace MathQuizLocker
 {
     public partial class QuizForm
     {
-		private void ApplyBiomeForCurrentLevel()
-		{
-            // Dispose old image to save RAM on your i5 laptop
+        private void ApplyBiomeForCurrentLevel()
+        {
+            // 1. Clean up old background to save memory
             var oldBg = this.BackgroundImage;
             this.BackgroundImage = null;
             oldBg?.Dispose();
 
+            // 2. Handle Story/Scroll Background
             if (_isShowingStory)
-			{
-				// 1. Force load the scroll image
-				string scrollPath = AssetPaths.Background("scroll_bg.png");
-				var scrollImg = AssetCache.GetImageClone(scrollPath);
+            {
+                string scrollPath = AssetPaths.Background("scroll_bg.png");
+                var scrollImg = AssetCache.GetImageClone(scrollPath);
+                if (scrollImg != null)
+                {
+                    this.BackgroundImage = scrollImg;
+                    this.BackgroundImageLayout = ImageLayout.Stretch;
+                }
+                return;
+            }
 
-				if (scrollImg != null)
-				{
-					this.BackgroundImage = scrollImg;
-					// Use Stretch to ensure the parchment covers the screen
-					this.BackgroundImageLayout = ImageLayout.Stretch;
-				}
-				else
-				{
-					// Fallback color so you can at least see it's working
-					this.BackColor = Color.Maroon;
-				}
-				return;
-			}
+            // 3. Determine base name based on level
+            int level = _settings.PlayerProgress.Level;
+            string baseName = (level > 4) ? "castle_01" :
+                              (level > 3) ? "cave_01" :
+                              (level > 2) ? "forest_01" :
+                              (level > 1) ? "swamp_01" : "meadow_01";
 
-			// 2. Normal Combat Biome Logic...
-			int level = _settings.PlayerProgress.Level;
-			string bgName = (level > 4) ? "castle_01.png" :
-							(level > 3) ? "cave_01.png" :
-							(level > 2) ? "forest_01.png" :
-							(level > 1) ? "swamp_01.png" : "meadow_01.png";
+            // 4. Check for Boss Suffix
+            // Ensure SpawnMonster() was called before this method!
+            if (_currentMonsterName != null && _currentMonsterName.Contains("_boss"))
+            {
+                baseName += "_boss";
+            }
 
-			this.BackgroundImage = AssetCache.GetImageClone(AssetPaths.Background(bgName));
-			this.BackgroundImageLayout = ImageLayout.Stretch;
-		}
+            // 5. Build the final filename with the extension
+            string finalFileName = baseName + ".png";
 
-		private void ShowLootDrop()
+            // 6. Generate the full path using your helper
+            string fullPath = AssetPaths.Background(finalFileName);
+
+            // 7. Load the image from the cache
+            var newImg = AssetCache.GetImageClone(fullPath);
+
+            if (newImg != null)
+            {
+                this.BackgroundImage = newImg;
+                this.BackgroundImageLayout = ImageLayout.Stretch;
+            }
+            else
+            {
+                // Debugging: This will show in your Visual Studio Output window
+                System.Diagnostics.Debug.WriteLine($"FAILED TO LOAD BACKGROUND: {fullPath}");
+            }
+        }
+
+        private void ShowLootDrop()
         {
             int currentLevel = _settings.PlayerProgress.Level;
 
@@ -188,10 +205,17 @@ namespace MathQuizLocker
         private void SpawnMonster()
         {
             int tier = Math.Max(1, _settings.MaxFactorUnlocked);
+            int currentLevel = _settings.PlayerProgress.Level;
+            int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
 
+            _currentMonsterName = tier < 3 ? "goblin" : tier < 5 ? "skeleton" : tier < 6 ? "slime" : tier < 7 ? "orc" : "dragon";
 
-			_currentMonsterName = tier < 3 ? "goblin" : tier < 5 ? "skeleton" : tier < 6 ? "slime" : tier < 7 ? "orc" : "dragon";
-			UpdateMonsterSprite("idle");
+            int estimatedReward = (int)(requiredXp * 0.6);
+            if (_settings.PlayerProgress.CurrentXp + estimatedReward >= requiredXp)
+            {
+                _currentMonsterName += "_boss"; 
+            }
+            UpdateMonsterSprite("idle");
         }
 
         private void UpdateMonsterSprite(string state)

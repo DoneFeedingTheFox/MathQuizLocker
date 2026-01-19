@@ -136,8 +136,10 @@ namespace MathQuizLocker
 				{
 					// 2. Normal path: Start a new battle if no story is pending
 					_session.StartNewBattle();
+                    SpawnMonster();
+                    ApplyBiomeForCurrentLevel();
 
-					_btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
+                    _btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
 					_txtAnswer.Visible = _btnSubmit.Visible = true;
 					_die1.Visible = _die2.Visible = _picMultiply.Visible = true;
 
@@ -256,17 +258,13 @@ namespace MathQuizLocker
 			int w = this.ClientSize.Width;
 			int h = this.ClientSize.Height;
 
-      
-
-
-          
             // Center the text vertically within the parchment area (~78% down)
             int textWidth = (int)(w * 0.65); // 65% of screen width keeps it away from scroll edges
             int textHeight = (int)(h * 0.15); // Gives enough vertical room for multiple lines
             _lblStoryText.Size = new Size(textWidth, textHeight);
-            _lblStoryText.Location = new Point((w - textWidth) / 2, (int)(h * 0.76)); // Slightly higher to allow wrapping
+            _lblStoryText.Location = new Point((w - textWidth) / 2, (int)(h * 0.74)); // Slightly higher to allow wrapping
 
-            _lblStoryText.Font = new Font("Palatino Linotype", 24, FontStyle.Bold); // Bigger font
+            _lblStoryText.Font = new Font("Palatino Linotype", 18, FontStyle.Bold); // Bigger font
 			_lblStoryText.ForeColor = Color.FromArgb(45, 30, 15); // Darker, richer ink color
 
 			// Position buttons at the very bottom edge of the parchment

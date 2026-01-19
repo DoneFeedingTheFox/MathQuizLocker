@@ -188,11 +188,12 @@ namespace MathQuizLocker
 			_btnSubmit.BringToFront();
 			_lblFeedback.BringToFront();
 
-			// 4. Reset World & Session
-			ApplyBiomeForCurrentLevel(); 
+            // 4. Reset World & Session
+            SpawnMonster();
+            ApplyBiomeForCurrentLevel(); 
             SetKnightIdleSprite();
             _session.StartNewBattle();
-            SpawnMonster();
+            
 
             // 5. Trigger Game Logic
             // GenerateQuestion calls AnimateDiceRoll(), which sets _isDicePhysicsActive = true
@@ -276,8 +277,8 @@ namespace MathQuizLocker
             base.OnShown(e);
 
             // Now all controls like _lblLevel and _die1 are guaranteed to be non-null
-            ApplyBiomeForCurrentLevel();
             SpawnMonster();
+            ApplyBiomeForCurrentLevel();
             UpdatePlayerHud();
             SetKnightIdleSprite();
 
