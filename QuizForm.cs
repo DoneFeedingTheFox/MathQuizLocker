@@ -276,14 +276,32 @@ namespace MathQuizLocker
         {
             base.OnShown(e);
 
-            // Now all controls like _lblLevel and _die1 are guaranteed to be non-null
-            SpawnMonster();
-            ApplyBiomeForCurrentLevel();
-            UpdatePlayerHud();
-            SetKnightIdleSprite();
+            // 1. Check if this is a brand new journey (Level 1 and 0 XP)
+            if (_settings.PlayerProgress.Level == 1 && _settings.PlayerProgress.CurrentXp == 0)
+            {
+                // Force the story mode state
+                _isShowingStory = true;
 
-            LayoutCombat();
-            GenerateQuestion(); 
+                // Hide combat UI elements that shouldn't be seen yet
+                _txtAnswer.Visible = _btnSubmit.Visible = false;
+                _lblLevel.Visible = _lblXpStatus.Visible = false;
+
+                // Show the story scroll and Level 1 text
+                ShowStoryScreen();
+            }
+            else
+            {
+                // Normal startup for returning players or mid-level sessions
+                _isShowingStory = false;
+
+                SpawnMonster();
+                ApplyBiomeForCurrentLevel();
+                UpdatePlayerHud();
+                SetKnightIdleSprite();
+
+                LayoutCombat();
+                GenerateQuestion();
+            }
 
             this.Invalidate();
         }

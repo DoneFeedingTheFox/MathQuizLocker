@@ -1,18 +1,18 @@
 ﻿{
   "stories": {
-    "level_2": "Landsbyens paier har forsvunnet, og små, grønne fotspor leder rett inn i skogen. Du må spore opp tussene til deres skjulested og finne en måte å stoppe tussekongen fra å lage mer tull.",
-    "level_3": "Med Landsbyen bak deg blir luften kald og bakken begynner å riste. Merkelige skjeletter er i ferd med å våkne, og du må finne Beinkommandøren for å skape fred på gravplassen igjen.",
-    "level_4": "En tykk tåke leder deg inn i en dal dekket av klebrig, hvitt silke. Tusenvis av edderkopper følger med fra trærne, og ryktene sier at en kjempe-edderkopp venter på at noen skal gå i fella.",
-    "level_5": "Den eneste veien videre er over en stor steinbro, men en høy snorking høres fra undersiden. Et troll har tatt broen som sin egen, og du må finne ut hvordan du skal komme deg forbi den tunge klubba hans.",
-    "level_6": "Du har oppdaget en hule der veggene ser ut til å smelte og bevege seg! Sprettende geleklumper fyller hver tunnel, og et sted i dypet vokser en gigantisk blå slimklump seg større for hvert minutt.",
-    "level_7": "Stien klatrer høyt opp i skyene der harpyene flyr. Du må holde balansen i den sterke vinden og finne Himmeldronningen for å få lov til å passere over fjellene.",
-    "level_8": "Du har kommet inn i en stille hage der statuene ser skremmende ekte ut. Pass deg for gargoiler som gjemmer seg rett foran nesa di, og vær klar til å møte Steinvokteren som beskytter slottsporten.",
-    "level_9": "Du er endelig inne i det store slemme monsterets slott, men gulvet er i ferd med å bli til lava! Ildånder danser i gangene, og en lavagolem står mellom deg og trappene videre.",
-    "level_10": "Tronrommet er nære, men gangen er full av svevende rustninger. Den spøkelsesaktige ridderen vokter denne veien, og han slipper bare de med det modigste hjertet gjennom døren sin.",
-    "level_11": "På toppen av det høyeste tårnet vokter den store røde dragen den stjålne gullkronen. Dette er din siste utfordring – du må bruke alt du har lært for å overvinne dragen og redde kongeriket!"
+    "level_1": "Landsbyens paier har forsvunnet, og små, grønne fotspor leder rett inn i skogen. Du må spore opp tussene til deres skjulested og finne en måte å stoppe tussekongen fra å lage mer tull.",
+    "level_2": "Med Landsbyen bak deg blir luften kald og bakken begynner å riste. Merkelige skjeletter er i ferd med å våkne, og du må finne Beinkommandøren for å skape fred på gravplassen igjen.",
+    "level_3": "En tykk tåke leder deg inn i en dal dekket av klebrig, hvitt silke. Tusenvis av edderkopper følger med fra trærne, og ryktene sier at en kjempe-edderkopp venter på at noen skal gå i fella.",
+    "level_4": "Den eneste veien videre er over en stor steinbro, men en høy snorking høres fra undersiden. Et troll har tatt broen som sin egen, og du må finne ut hvordan du skal komme deg forbi den tunge klubba hans.",
+    "level_5": "Du har oppdaget en hule der veggene ser ut til å smelte og bevege seg! Sprettende geleklumper fyller hver tunnel, og et sted i dypet vokser en gigantisk blå slimklump seg større for hvert minutt.",
+    "level_6": "Stien klatrer høyt opp i skyene der harpyene flyr. Du må holde balansen i den sterke vinden og finne Himmeldronningen for å få lov til å passere over fjellene.",
+    "level_7": "Du har kommet inn i en stille hage der statuene ser skremmende ekte ut. Pass deg for gargoiler som gjemmer seg rett foran nesa di, og vær klar til å møte Steinvokteren som beskytter slottsporten.",
+    "level_8": "Du er endelig inne i det store slemme monsterets slott, men gulvet er i ferd med å bli til lava! Ildånder danser i gangene, og en lavagolem står mellom deg og trappene videre.",
+    "level_9": "Tronrommet er nære, men gangen er full av svevende rustninger. Den spøkelsesaktige ridderen vokter denne veien, og han slipper bare de med det modigste hjertet gjennom døren sin.",
+    "level_10": "På toppen av det høyeste tårnet vokter den store røde dragen den stjålne gullkronen. Dette er din siste utfordring – du må bruke alt du har lært for å overvinne dragen og redde kongeriket!"
   },
   "ui": {
     "continue": "Fortsett reisen",
-    "exit": "Dra til vertshuset"
+    "exit": "Rømm fra faren!"
   }
 }

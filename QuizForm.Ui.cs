@@ -240,51 +240,62 @@ namespace MathQuizLocker
 			LayoutCombat();
 		}
 
-		private void ShowStoryScreen()
-		{
-			_isShowingStory = true;
-			ApplyBiomeForCurrentLevel();
+        private void ShowStoryScreen()
+        {
+            _isShowingStory = true;
+            ApplyBiomeForCurrentLevel();
 
-			// 1. Hide HUD and combat visuals
-			_picKnight.Image = null;
-			_picMonster.Image = null;
-			_lblLevel.Visible = false;
-			_lblXpStatus.Visible = false;
+            // 1. Skjul HUD og kamp-visualiseringer
+            _picKnight.Image = null;
+            _picMonster.Image = null;
+            _lblLevel.Visible = false;
+            _lblXpStatus.Visible = false;
 
-			// 2. Load the text content
-			_lblStoryText.Text = LocalizationService.GetStory(_settings.PlayerProgress.Level);
+            // 2. Last inn tekstinnhold basert på nivå
+            _lblStoryText.Text = LocalizationService.GetStory(_settings.PlayerProgress.Level);
 
-			// 3. Dynamic Positioning for the Scroll area
-			int w = this.ClientSize.Width;
-			int h = this.ClientSize.Height;
+            // 3. Dynamisk posisjonering
+            int w = this.ClientSize.Width;
+            int h = this.ClientSize.Height;
 
-            // Center the text vertically within the parchment area (~78% down)
-            int textWidth = (int)(w * 0.65); // 65% of screen width keeps it away from scroll edges
-            int textHeight = (int)(h * 0.15); // Gives enough vertical room for multiple lines
+            int textWidth = (int)(w * 0.65);
+            int textHeight = (int)(h * 0.15);
             _lblStoryText.Size = new Size(textWidth, textHeight);
-            _lblStoryText.Location = new Point((w - textWidth) / 2, (int)(h * 0.74)); // Slightly higher to allow wrapping
+            _lblStoryText.Location = new Point((w - textWidth) / 2, (int)(h * 0.74));
 
-            _lblStoryText.Font = new Font("Palatino Linotype", 18, FontStyle.Bold); // Bigger font
-			_lblStoryText.ForeColor = Color.FromArgb(45, 30, 15); // Darker, richer ink color
+            _lblStoryText.Font = new Font("Palatino Linotype", 18, FontStyle.Bold);
+            _lblStoryText.ForeColor = Color.FromArgb(45, 30, 15);
 
-			// Position buttons at the very bottom edge of the parchment
-			_btnStoryContinue.Location = new Point(w / 2 - _btnStoryContinue.Width - 10, (int)(h * 0.92));
-			_btnStoryExit.Location = new Point(w / 2 + 10, (int)(h * 0.92));
+            // --- LOGIKK FOR TVUNGEN INTRO ---
+            // Sjekk om dette er den aller første introen
+            bool isFirstIntro = (_settings.PlayerProgress.Level == 1 && _settings.PlayerProgress.CurrentXp == 0);
 
-			// 4. Final Visibility Pass
-			_lblStoryText.Visible = true;
-			_btnStoryContinue.Visible = true;
-			_btnStoryExit.Visible = true;
+            if (isFirstIntro)
+            {
+                // Sentrer "Fortsett"-knappen siden den er alene
+                _btnStoryContinue.Location = new Point((w - _btnStoryContinue.Width) / 2, (int)(h * 0.92));
+                _btnStoryExit.Visible = false;
+            }
+            else
+            {
+                // Normal plassering med to knapper
+                _btnStoryContinue.Location = new Point(w / 2 - _btnStoryContinue.Width - 10, (int)(h * 0.92));
+                _btnStoryExit.Location = new Point(w / 2 + 10, (int)(h * 0.92));
+                _btnStoryExit.Visible = true;
+            }
 
-			_lblStoryText.BringToFront();
-			_btnStoryContinue.BringToFront();
-			_btnStoryExit.BringToFront();
+            // 4. Endelig synlighet
+            _lblStoryText.Visible = true;
+            _btnStoryContinue.Visible = true;
 
-			this.Invalidate();
-		}
+            _lblStoryText.BringToFront();
+            _btnStoryContinue.BringToFront();
+            if (!isFirstIntro) _btnStoryExit.BringToFront();
 
+            this.Invalidate();
+        }
 
-		public void LayoutCombat()
+        public void LayoutCombat()
         {
             if (this.ClientSize.Width == 0 || this.ClientSize.Height == 0) return;
             float scale = this.ClientSize.Height / 1080f;

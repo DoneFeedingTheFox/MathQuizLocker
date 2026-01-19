@@ -5,13 +5,13 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "Boss encounters are now implemented"
+git commit -m "New players start with a small intro screen"
 
 git push origin main
 
 
-git tag v2.0.1
-git push origin v2.0.1
+git tag v2.0.2
+git push origin v2.0.2
 
 
 
