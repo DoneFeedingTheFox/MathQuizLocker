@@ -18,75 +18,82 @@ namespace MathQuizLocker.Services
             InitializeForCurrentLevel();
         }
 
-		public (int a, int b) GetNextQuestion()
-		{
-			var candidates = _settings.Progress.Values.ToList(); //
+        public (int a, int b) GetNextQuestion(bool isBoss = false)
+        {
+            var allCandidates = _settings.Progress.Values.ToList();
+            List<FactProgress> filteredCandidates;
 
-			// Create a weighted list: 
-			// - Give wrong answers/low streaks more "tickets" in the lottery
-			// - Give mastered answers (streak > 3) fewer "tickets"
-			List<FactProgress> weightedPool = new List<FactProgress>();
+            if (isBoss)
+            {
+             
+                filteredCandidates = allCandidates;
+            }
+            else
+            {
+                
+                filteredCandidates = allCandidates
+                    .Where(p => p.A == _settings.MaxFactorUnlocked || p.B == _settings.MaxFactorUnlocked)
+                    .ToList();
+            }
 
-			foreach (var p in candidates)
-			{
-				int weight = 10; // Base weight
-				weight += (p.IncorrectCount * 5); // Add weight for mistakes
-				weight -= (p.CurrentStreak * 2);  // Reduce weight for success
 
-				if (weight < 1) weight = 1; // Minimum weight of 1
+            List<FactProgress> weightedPool = new List<FactProgress>();
+            foreach (var p in filteredCandidates)
+            {
+                int weight = 10;
+                weight += (p.IncorrectCount * 5);
+                weight -= (p.CurrentStreak * 2);
+                if (weight < 1) weight = 1;
 
-				for (int i = 0; i < weight; i++)
-				{
-					weightedPool.Add(p);
-				}
-			}
+                for (int i = 0; i < weight; i++) weightedPool.Add(p);
+            }
 
-			// Pick from the weighted pool (excluding the last key if possible)
-			var filteredPool = weightedPool.Where(p => $"{p.A}x{p.B}" != _lastFactKey).ToList();
-			_currentFact = filteredPool.Count > 0
-				? filteredPool[_rng.Next(filteredPool.Count)]
-				: weightedPool[_rng.Next(weightedPool.Count)];
+            var finalSelection = weightedPool.Where(p => $"{p.A}x{p.B}" != _lastFactKey).ToList();
+            _currentFact = finalSelection.Count > 0
+                ? finalSelection[_rng.Next(finalSelection.Count)]
+                : weightedPool[_rng.Next(weightedPool.Count)];
 
-			_lastFactKey = $"{_currentFact.A}x{_currentFact.B}"; //
-			return (_currentFact.A, _currentFact.B); //
-		}
+            _lastFactKey = $"{_currentFact.A}x{_currentFact.B}";
+            return (_currentFact.A, _currentFact.B);
+        }
 
-		public bool SubmitAnswer(int userAnswer)
-		{
-			if (_currentFact == null) return false;
-			bool isCorrect = userAnswer == (_currentFact.A * _currentFact.B);
+        public bool SubmitAnswer(int userAnswer)
+        {
+            if (_currentFact == null) return false;
 
-			if (isCorrect)
-			{
-				_currentFact.CorrectCount++;
-				_currentFact.CurrentStreak++;
-			}
-			else
-			{
-				_currentFact.CurrentStreak = 0; // Mistakes reset the streak
-			}
+            bool isCorrect = userAnswer == (_currentFact.A * _currentFact.B);
 
-			_currentFact.LastAsked = DateTime.Now;
+            if (isCorrect)
+            {
+                _currentFact.CorrectCount++;
+                _currentFact.CurrentStreak++;
+            }
+            else
+            {
+                _currentFact.CurrentStreak = 0;
+                _currentFact.IncorrectCount++; 
+            }
 
-			// --- AUTOMATIC POOL EXPANSION ---
-			var pool = _settings.Progress.Values.ToList();
-			// Check how many unique facts have been "learned" (streak of 3+)
-			int masteredCount = pool.Count(p => p.CurrentStreak >= 3);
-			double masteryPercent = (double)masteredCount / pool.Count;
+            _currentFact.LastAsked = DateTime.Now;
 
-			// If 60% of the current pool is mastered, unlock the next number
-			if (masteryPercent > 0.60 && _settings.MaxFactorUnlocked < 10)
-			{
-				_settings.MaxFactorUnlocked++;
-				ExpandPool(); // Adds the 5s, 6s, etc.
+            
+            AppSettings.Save(_settings);
 
-				// Save immediately so progress isn't lost if the app closes
-				AppSettings.Save(_settings);
-			}
+            return isCorrect;
+        }
 
-			return isCorrect;
-		}
-		private void ExpandPool()
+        public void PromoteToNextLevel()
+        {
+            // Denne kalles kun fra QuizForm når bossen er beseiret
+            if (_settings.MaxFactorUnlocked < 10)
+            {
+                _settings.MaxFactorUnlocked++;
+                ExpandPool();
+                AppSettings.Save(_settings);
+            }
+        }
+
+        private void ExpandPool()
 		{
 			int currentMax = _settings.MaxFactorUnlocked;
 

@@ -237,24 +237,49 @@ namespace MathQuizLocker
 
         private void GenerateQuestion()
         {
+            // 1. CLEAR PREVIOUS DATA
+            _txtAnswer.Clear();             // Removes the old answer
+            _txtAnswer.Enabled = true;      // Ensures input is active
+            _btnSubmit.Enabled = true;      // Re-enables the button
 
-			_secondsRemaining = 10;
-			if (_lblTimer != null)
-			{
-				_lblTimer.Text = "10";
-				_lblTimer.Visible = false; // Keep hidden while dice are rolling
-			}
-			var q = _quizEngine.GetNextQuestion();
-            _a = q.a;
-            _b = q.b;
+            _secondsRemaining = 10;
+            if (_lblTimer != null)
+            {
+                _lblTimer.Text = "10";
+                _lblTimer.Visible = false; // Hidden while dice are in the air
+            }
 
-			// Set dice images
-			_die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
+            // 2. LOGIC FOR BOSS VS TRAINING
+            bool isBoss = _currentMonsterName.ToLower().Contains("boss");
+
+            if (isBoss)
+            {
+                // Boss picks from everything you have unlocked
+                int maxFactor = _settings.MaxFactorUnlocked;
+                _a = _rng.Next(1, maxFactor + 1);
+                _b = _rng.Next(1, 11);
+            }
+            else
+            {
+                // Regular monsters stay on the current learning track
+                var q = _quizEngine.GetNextQuestion(false);
+                _a = q.a;
+                _b = q.b;
+            }
+
+            // 3. REFRESH VISUALS
+            _die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
             _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
             _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
-            AnimateDiceRoll();
 
-            _txtAnswer.Clear();
+            // Ensure they are visible before the physics starts
+            _die1.Visible = true;
+            _die2.Visible = true;
+            _picMultiply.Visible = true;
+
+            // 4. TRIGGER ANIMATION
+            AnimateDiceRoll(); // This must reset _scrambleTicks to 0 internally!
+
             _txtAnswer.Focus();
         }
 

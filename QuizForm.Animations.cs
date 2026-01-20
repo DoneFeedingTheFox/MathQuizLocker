@@ -16,6 +16,7 @@ namespace MathQuizLocker
 
             // Process game logic immediately
             _session.ApplyDamage(damage);
+            UpdatePlayerHud();
             ShowDamage(damage, _picMonster.Location, Color.Red);
 
             // Change the sprite once to the attack frame
@@ -67,9 +68,11 @@ namespace MathQuizLocker
             _isAnimating = true;
             UpdateMonsterSprite("attack");
 
+            bool isHeavyHit = damage >= 40;
+
             // Process damage logic
             _session.ApplyPlayerDamage(damage);
-            ShowDamage(damage, _picKnight.Location, Color.OrangeRed);
+            ShowDamage(damage, _picKnight.Location, isHeavyHit ? Color.DarkRed : Color.OrangeRed);
 
             // Swap knight sprite once
             _picKnight.Image = AssetCache.GetImageClone(AssetPaths.KnightHit(_equippedKnightStage));
@@ -85,13 +88,15 @@ namespace MathQuizLocker
             {
                 step++;
 
+                int lungeSpeed = isHeavyHit ? 30 : 20;
+
                 // Movement Logic
-                if (step <= 5) _picMonster.Left -= 20;
-                else if (step <= 12) _picMonster.Left += 15;
+                if (step <= 5) _picMonster.Left -= lungeSpeed;
+                else if (step <= 12) _picMonster.Left += (int)(lungeSpeed * 0.75);
                 else
                 {
                     _meleeTimer.Stop();
-                    _meleeTimer.Tick -= MonsterTickHandler; // Detach
+                    _meleeTimer.Tick -= MonsterTickHandler;
 
                     _isAnimating = false;
                     _picMonster.Left = originalMonsterX;
@@ -104,15 +109,16 @@ namespace MathQuizLocker
                     }
                     else
                     {
+                        // Re-aktiver input etter angrepet
+                        _txtAnswer.Enabled = true;
+                        _btnSubmit.Enabled = true;
                         GenerateQuestion();
                     }
 
-                    this.Invalidate(); // Final full redraw for UI cleanup
+                    this.Invalidate();
                     return;
                 }
 
-                // 2. PERFORMANCE FIX: Only redraw the active combat area
-                // This captures both the monster lunge and the knight's health bar reaction
                 this.Invalidate(GetCombatZone());
             }
 

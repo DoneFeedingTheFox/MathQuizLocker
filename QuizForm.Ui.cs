@@ -191,11 +191,17 @@ namespace MathQuizLocker
 
 			_awaitingChestOpen = false;
 
-			// 1. Calculate XP Reward 
-			int currentLevel = _settings.PlayerProgress.Level;
+            if (_currentMonsterName.ToLower().Contains("boss"))
+            {
+              
+                _quizEngine.PromoteToNextLevel();
+                _awaitingChestOpen = true;
+            }
+
+            // 1. Calculate XP Reward 
+          
 			int requiredXp = XpSystem.GetXpRequiredForNextLevel(_settings.PlayerProgress.Level);
             int killReward = (int)(requiredXp * 0.6); // 60% of required XP for next level
-
 			_settings.PlayerProgress.CurrentXp += killReward;
 
 			// 2. Check for Level Up

@@ -80,13 +80,24 @@ namespace MathQuizLocker
 				_txtAnswer.Enabled = false;
 				_btnSubmit.Enabled = false;
 
-				int failureDmg = _a * _b; // Use the math result as punishment damage
-				AnimateMonsterAttack(failureDmg);
-			}
-		}
+                int failureDmg;
+                if (_currentMonsterName.ToLower().Contains("boss"))
+                {
+                    failureDmg = 50; // The BOSS SLAP
+              
+                }
+                else
+                {
+                    failureDmg = _a * _b; // Normal monster punishment
+               
+                }
+
+                AnimateMonsterAttack(failureDmg);
+            }
+        }
 
 
-		public QuizForm(AppSettings settings)
+        public QuizForm(AppSettings settings)
         {
             _settings = settings;
             _quizEngine = new QuizEngine(_settings);
@@ -400,32 +411,49 @@ namespace MathQuizLocker
 			}
   
         }
-        
 
-		private void BtnSubmit_Click(object? sender, EventArgs e)
+
+        private void BtnSubmit_Click(object? sender, EventArgs e)
         {
+           
             if (_isAnimating || !int.TryParse(_txtAnswer.Text, out int ans)) return;
 
-			_countdownTimer.Stop(); // Stop the clock immediately
-			_lblTimer.Visible = false;
+            _countdownTimer.Stop();
+            _lblTimer.Visible = false;
 
-			// HIDE DICE IMMEDIATELY
-			_die1.Visible = false;
+          
+            _die1.Visible = false;
             _die2.Visible = false;
             _picMultiply.Visible = false;
             this.Invalidate();
+
+           
             var result = _session.ProcessAnswer(ans, _a, _b);
 
             if (result.IsCorrect)
             {
-               
+              
                 AnimateMeleeStrike(ans);
             }
             else
             {
-                int dmg = _a * _b;
-              
-                AnimateMonsterAttack(dmg);
+               
+                int damage;
+
+             
+                if (_currentMonsterName.ToLower().Contains("boss"))
+                {
+                   
+                    damage = 40;
+               
+                }
+                else
+                {
+                
+                    damage = Math.Max(5, (_a * _b) / 2);
+                }
+
+                AnimateMonsterAttack(damage);
             }
         }
     }

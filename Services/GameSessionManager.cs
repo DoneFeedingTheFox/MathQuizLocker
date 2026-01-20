@@ -63,7 +63,7 @@ namespace MathQuizLocker.Services
             if (_monsterHealth <= 0)
             {
                 _monsterHealth = 0;
-                TotalKills++; // Increment kill counter
+            
             }
             Console.WriteLine($"Monster took {damage} dmg. Remaining: {_monsterHealth}");
         }
