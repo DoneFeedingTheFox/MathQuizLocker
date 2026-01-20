@@ -14,13 +14,23 @@ namespace MathQuizLocker
             _isAnimating = true;
             _knightOriginalPos = _picKnight.Location;
 
-            // Process game logic immediately
-            _session.ApplyDamage(damage);
-            UpdatePlayerHud();
+
+			bool isDefeated = _session.ApplyDamage(damage, out int xpGained, out bool leveledUp);
+		    UpdatePlayerHud();
             ShowDamage(damage, _picMonster.Location, Color.Red);
 
-            // Change the sprite once to the attack frame
-            _picKnight.Image = AssetCache.GetImageClone(AssetPaths.KnightAttack(_equippedKnightStage));
+			if (isDefeated)
+			{
+				string xpMsg = $"+{xpGained} XP";
+				if (leveledUp) xpMsg = "LEVEL UP! " + xpMsg;
+
+				// Show XP gained floating near the knight or feedback label
+				_lblFeedback.Text = xpMsg;
+				_lblFeedback.ForeColor = leveledUp ? Color.Gold : Color.White;
+			}
+
+			// Change the sprite once to the attack frame
+			_picKnight.Image = AssetCache.GetImageClone(AssetPaths.KnightAttack(_equippedKnightStage));
 
             int distance = _picMonster.Left - _picKnight.Right + 50;
             int step = 0;
@@ -40,19 +50,24 @@ namespace MathQuizLocker
                 else
                 {
                     _meleeTimer.Stop();
-                    _meleeTimer.Tick -= MeleeTickHandler; // Detach to prevent memory leaks
+                    _meleeTimer.Tick -= MeleeTickHandler; 
 
                     _isAnimating = false;
                     _picKnight.Location = _knightOriginalPos;
                     SetKnightIdleSprite();
                     UpdateMonsterSprite("idle");
 
-                    if (_session.CurrentMonsterHealth <= 0)
-                        ShowVictoryScreen();
-                    else
-                        GenerateQuestion();
+					if (_session.CurrentMonsterHealth <= 0)
+					{
+						// Pass victory data if your ShowVictoryScreen supports it
+						ShowVictoryScreen();
+					}
+					else
+					{
+						GenerateQuestion();
+					}
 
-                    this.Invalidate(); // Final full redraw to ensure UI is clean
+					this.Invalidate(); // Final full redraw to ensure UI is clean
                     return;
                 }
 

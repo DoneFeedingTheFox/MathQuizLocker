@@ -134,9 +134,12 @@ namespace MathQuizLocker
 				}
 				else
 				{
-					// 2. Normal path: Start a new battle if no story is pending
-					_session.StartNewBattle();
-                    SpawnMonster();
+					
+					var startMonster = _monsterService.GetMonster("goblin");
+
+				
+					_session.StartNewBattle(startMonster.MaxHealth, startMonster.XpReward);
+					SpawnMonster();
                     ApplyBiomeForCurrentLevel();
 
                     _btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
@@ -178,8 +181,10 @@ namespace MathQuizLocker
             _lblGameOver.Visible = false;
             _btnRestart.Visible = false;
 
-            _session.StartNewBattle(); // Resets health and monsters
-            GenerateQuestion();
+			var initialConfig = _monsterService.GetMonster("goblin");
+
+			_session.StartNewBattle(initialConfig.MaxHealth, initialConfig.XpReward);
+			GenerateQuestion();
 
             _txtAnswer.Visible = _btnSubmit.Visible = true;
             _txtAnswer.Focus();

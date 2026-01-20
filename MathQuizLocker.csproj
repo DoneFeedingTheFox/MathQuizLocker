@@ -30,5 +30,10 @@
   <ItemGroup>
     <None Include="icon.ico" Pack="true" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="monsters.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>

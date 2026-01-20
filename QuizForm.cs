@@ -11,6 +11,8 @@ namespace MathQuizLocker
    
 		private System.Windows.Forms.Timer _physicsTimer;
 
+		private MonsterService _monsterService;
+        	
 		// Core Services
 		private readonly AppSettings _settings;
         private readonly QuizEngine _quizEngine;
@@ -98,14 +100,16 @@ namespace MathQuizLocker
                 AnimateMonsterAttack(failureDmg);
             }
         }
+		
 
-
-        public QuizForm(AppSettings settings)
+		public QuizForm(AppSettings settings)
         {
             _settings = settings;
             _quizEngine = new QuizEngine(_settings);
             _session = new GameSessionManager(_settings, _quizEngine);
-	
+
+			_monsterService = new MonsterService();
+
 			// Performance Settings
 			this.DoubleBuffered = true;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint |
@@ -116,10 +120,12 @@ namespace MathQuizLocker
             // Initialize Custom Game UI
             LocalizationService.LoadLanguage("no");
             InitializeCombatUi(); 
-            InitStoryUi(); 
+            InitStoryUi();
 
-            // Set initial progression state
-            _equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0
+	
+
+			// Set initial progression state
+			_equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0
                 ? _settings.PlayerProgress.EquippedKnightStage
                 : 1;
 
@@ -127,7 +133,10 @@ namespace MathQuizLocker
             this.Resize += QuizForm_Resize;
         }
 
-        private Rectangle GetCombatZone()
+
+		
+
+		private Rectangle GetCombatZone()
         {
             // Capture the highest point (Health Bars) and lowest point (Feet)
             int yTop = Math.Min(_picKnight.Top, _picMonster.Top) - 60;
@@ -198,12 +207,19 @@ namespace MathQuizLocker
             SpawnMonster();
             ApplyBiomeForCurrentLevel(); 
             SetKnightIdleSprite();
-            _session.StartNewBattle();
-            
+			// 1. First, make sure your monster service is ready
+			_monsterService = new MonsterService();
 
-            // 5. Trigger Game Logic
-            // GenerateQuestion calls AnimateDiceRoll(), which sets _isDicePhysicsActive = true
-   
+			// 2. Fetch a starting monster (e.g., a goblin for Level 1)
+			var initialMonster = _monsterService.GetMonster("goblin");
+
+			// 3. FIX: Pass the required parameters to the session
+			_session.StartNewBattle(initialMonster.MaxHealth, initialMonster.XpReward);
+
+
+			// 5. Trigger Game Logic
+			// GenerateQuestion calls AnimateDiceRoll(), which sets _isDicePhysicsActive = true
+
 			GenerateQuestion();
 
             _txtAnswer.Focus();

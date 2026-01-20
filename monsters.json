@@ -1,0 +1,23 @@
+[
+  {
+    "Name": "goblin",
+    "MaxHealth": 60,
+    "XpReward": 0,
+    "IsBoss": false,
+    "SpritePath": "Monsters/goblin"
+  },
+  {
+    "Name": "goblin_boss",
+    "MaxHealth": 120,
+    "XpReward": 250,
+    "IsBoss": true,
+    "SpritePath": "Monsters/goblin_boss"
+  },
+  {
+    "Name": "skeleton",
+    "MaxHealth": 100,
+    "XpReward": 0,
+    "IsBoss": false,
+    "SpritePath": "Monsters/skeleton"
+  }
+]

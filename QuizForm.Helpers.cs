@@ -204,34 +204,62 @@ namespace MathQuizLocker
             this.Invalidate();
         }
 
-        private void SpawnMonster()
-        {
-            int tier = Math.Max(1, _settings.MaxFactorUnlocked);
-            int currentLevel = _settings.PlayerProgress.Level;
-            int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
+		private void SpawnMonster()
+		{
+			// 1. Determine which BASE monster to spawn based on tier
+			int tier = Math.Max(1, _settings.MaxFactorUnlocked);
+			string baseName = tier < 2 ? "goblin" :
+							  tier < 4 ? "skeleton" :
+							  tier < 5 ? "slime" :
+							  tier < 6 ? "orc" : "dragon";
 
-            _currentMonsterName = tier < 3 ? "goblin" : tier < 5 ? "skeleton" : tier < 6 ? "slime" : tier < 7 ? "orc" : "dragon";
+			// 2. Logic to decide if it's a Boss encounter
+			int currentLevel = _settings.PlayerProgress.Level;
+			int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
 
-            int estimatedReward = (int)(requiredXp * 0.6);
-            if (_settings.PlayerProgress.CurrentXp + estimatedReward >= requiredXp)
-            {
-                _currentMonsterName += "_boss"; 
-            }
-            UpdateMonsterSprite("idle");
-        }
+			// Using your existing estimated reward logic to trigger a boss
+			int estimatedReward = (int)(requiredXp * 0.6);
+			string lookupName = baseName;
 
-        private void UpdateMonsterSprite(string state)
-        {
-            string suffix = state == "idle" ? "" : $"_{state}";
-            string path = AssetPaths.Monsters($"{_currentMonsterName}{suffix}.png");
+			if (_settings.PlayerProgress.CurrentXp + estimatedReward >= requiredXp)
+			{
+				lookupName += "_boss";
+			}
 
-            var img = AssetCache.GetImageClone(path);
-            if (img != null)
-            {
-                _picMonster.Image?.Dispose();
-                _picMonster.Image = img;
-            }
-        }
+			// 3. FETCH data from the JSON config via the service
+			var monsterConfig = _monsterService.GetMonster(lookupName);
+
+			// 4. Update Game State
+			_currentMonsterName = monsterConfig.Name;
+
+			// Apply the health and reward from the JSON file to the current session
+			_session.StartNewBattle(monsterConfig.MaxHealth, monsterConfig.XpReward);
+
+			// 5. REFRESH VISUALS
+			UpdateMonsterSprite("idle");
+			UpdatePlayerHud(); // Refresh health bars to show the new monster's max health
+		}
+
+		private void UpdateMonsterSprite(string state)
+		{
+			var config = _monsterService.GetMonster(_currentMonsterName);
+			string suffix = (state == "idle") ? "" : $"_{state}";
+
+		
+			string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+										   "Assets",
+										   "Monsters", 
+										   $"{config.Name}{suffix}.png");
+
+			var img = AssetCache.GetImageClone(fullPath);
+			if (img != null)
+			{
+				_picMonster.Image?.Dispose();
+				_picMonster.Image = img;
+				_picMonster.Visible = true;
+				_picMonster.BringToFront();
+			}
+		}
 
 
 
@@ -249,8 +277,7 @@ namespace MathQuizLocker
 				_lblTimer.Visible = false;
 			}
 
-			// 2. UNIFIED LOGIC
-			// Determine if it's a boss
+		
 			bool isBoss = _currentMonsterName.ToLower().Contains("boss");
 
 			// CRITICAL: Always get the question from the engine.

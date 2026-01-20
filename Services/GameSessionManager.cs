@@ -23,9 +23,11 @@ namespace MathQuizLocker.Services
         private int _playerHealth;
         private const int MaxPlayerHealth = 100;
         private int _maxMonsterHealth;
+		private int _currentMonsterXpReward; 
 
-        // Public Properties for the UI to read
-        public int CurrentPlayerHealth => _playerHealth;
+
+		// Public Properties for the UI to read
+		public int CurrentPlayerHealth => _playerHealth;
         public int CurrentMonsterHealth => _monsterHealth;
         public int MaxMonsterHealth => _maxMonsterHealth;
 
@@ -40,33 +42,47 @@ namespace MathQuizLocker.Services
             _quizEngine = engine;                  
             _playerHealth = MaxPlayerHealth;
 
-            StartNewBattle();
+   
         }
 
-        public void StartNewBattle()
-        {
-            _progress = _settings.PlayerProgress;
+		public void StartNewBattle(int maxHealth, int xpReward)
+		{
+			_progress = _settings.PlayerProgress;
 
-            // Reset Monster Health based on Tier
-            int tier = Math.Max(1, _settings.MaxFactorUnlocked);
-            _maxMonsterHealth = 15 + (tier * 15);
-            _monsterHealth = _maxMonsterHealth;
+			_maxMonsterHealth = maxHealth;
+			_monsterHealth = maxHealth;
+			_currentMonsterXpReward = xpReward;
 
-            _playerHealth = MaxPlayerHealth;
+			_playerHealth = MaxPlayerHealth;
 
-            Console.WriteLine($"Battle Start: Monster HP {_monsterHealth}, Player HP {_playerHealth}");
-        }
+			Console.WriteLine($"Battle Start: {maxHealth} HP, {xpReward} XP Reward");
+		}
 
-        public void ApplyDamage(int damage)
-        {
-            _monsterHealth -= damage;
-            if (_monsterHealth <= 0)
-            {
-                _monsterHealth = 0;
-            
-            }
-            Console.WriteLine($"Monster took {damage} dmg. Remaining: {_monsterHealth}");
-        }
+		public bool ApplyDamage(int damage, out int xpGained, out bool leveledUp)
+		{
+			xpGained = 0;
+			leveledUp = false;
+
+			_monsterHealth -= damage;
+
+			if (_monsterHealth <= 0)
+			{
+				_monsterHealth = 0;
+
+				// Use the XP amount we got from the JSON
+				xpGained = _currentMonsterXpReward;
+
+				// Use your XpSystem to update progress
+				leveledUp = XpSystem.AddXp(_settings.PlayerProgress, xpGained);
+
+				TotalKills++;
+				AppSettings.Save(_settings); // Save progress immediately on kill
+				return true; // Monster defeated
+			}
+
+			return false; // Monster still alive
+		}
+        
 
         public void ApplyPlayerDamage(int damage)
         {
