@@ -106,8 +106,10 @@ namespace MathQuizLocker
 		{
 			_isChestOpening = true;
 			_chestShakeTicks = 0;
+            _btnContinue.Visible = false;
+            _btnExit.Visible = false;
 
-			int currentLevel = _settings.PlayerProgress.Level;
+            int currentLevel = _settings.PlayerProgress.Level;
 			_pendingLootItemFile = $"item_{currentLevel}.png";
 			_pendingKnightStage = currentLevel;
 
@@ -156,7 +158,7 @@ namespace MathQuizLocker
 
                     // 5. Show the Victory Buttons
                     _btnContinue.Visible = true;
-                    _btnExit.Visible = true;
+                    _btnExit.Visible = false;
                     _btnContinue.Focus();
                 }
                 else if (_chestShakeTicks > 50)

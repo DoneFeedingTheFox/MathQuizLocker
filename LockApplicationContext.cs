@@ -13,26 +13,21 @@ namespace MathQuizLocker
 
         public LockApplicationContext()
         {
-            _settings = AppSettings.Load(); //
+            _settings = AppSettings.Load();
 
-            _timer = new System.Windows.Forms.Timer { Interval = 3000 };
-            _timer.Tick += (s, e) => CheckIdle();
-            _timer.Start();
+            // Hindre autostart-registrering når du kjører fra Visual Studio (Debug)
+#if !DEBUG
+    SetAutostart(true);
+#endif
 
-            // The event subscription
             SystemEvents.PowerModeChanged += (s, e) =>
             {
                 if (e.Mode == PowerModes.Resume && _settings.LockOnWakeFromSleep)
                 {
-                    // Only trigger if a quiz isn't already visible
-                    if (!_quizOpen)
-                    {
-                        ShowQuiz();
-                    }
+                    if (!_quizOpen) ShowQuiz();
                 }
             };
 
-            // Initial launch for debugging
             ShowQuiz();
         }
 

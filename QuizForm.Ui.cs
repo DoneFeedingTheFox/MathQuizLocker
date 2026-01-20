@@ -226,10 +226,12 @@ namespace MathQuizLocker
 
 			if (_awaitingChestOpen)
 			{
-				ShowLootDrop();
-				// Only show Continue. Exit moves to the Story Screen.
-				_btnContinue.Visible = true;
-				_btnExit.Visible = false;
+                _btnContinue.Visible = false;
+                _btnExit.Visible = false;
+
+                ShowLootDrop();
+				
+			
 			}
 			else
 			{

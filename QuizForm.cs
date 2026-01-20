@@ -49,12 +49,6 @@ namespace MathQuizLocker
 		private Button _btnStoryContinue, _btnStoryExit;
 		private bool _isShowingStory = false;
 
-        // FPS Tracking
-        private int _frameCount = 0;
-        private int _fps = 0;
-        private DateTime _lastFpsUpdate = DateTime.Now;
-        private System.Diagnostics.Stopwatch _frameTimer = new System.Diagnostics.Stopwatch();
-        private long _lastFrameMs = 0;
 
 		// Countdown Timer for answering questions
 		private System.Windows.Forms.Timer _countdownTimer = new();
@@ -276,6 +270,8 @@ namespace MathQuizLocker
         {
             base.OnShown(e);
 
+            Program.SetExternalAutostart(true);
+
             // 1. Check if this is a brand new journey (Level 1 and 0 XP)
             if (_settings.PlayerProgress.Level == 1 && _settings.PlayerProgress.CurrentXp == 0)
             {
@@ -314,15 +310,14 @@ namespace MathQuizLocker
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            _frameTimer.Restart();
+   
 
             // 1. If Story Mode is active, draw ONLY the background/overlay and exit
             if (_isShowingStory)
             {
                 // Let the base class draw the Background (your scroll)
                 base.OnPaint(e);
-                _frameTimer.Stop();
-                _lastFrameMs = _frameTimer.ElapsedMilliseconds;
+    
                 return;
             }
             // High-performance settings for your laptop
@@ -403,22 +398,7 @@ namespace MathQuizLocker
 					g.FillRectangle(overlayBrush, this.ClientRectangle);
 				}
 			}
-            _frameTimer.Stop();
-            _lastFrameMs = _frameTimer.ElapsedMilliseconds;
-
-            // Calculate FPS once per second
-            _frameCount++;
-            if ((DateTime.Now - _lastFpsUpdate).TotalSeconds >= 1)
-            {
-                _fps = _frameCount;
-                _frameCount = 0;
-                _lastFpsUpdate = DateTime.Now;
-            }
-
-            // Draw the Debug Overlay in the top-right corner
-            string debugInfo = $"FPS: {_fps} | Draw Time: {_lastFrameMs}ms";
-            e.Graphics.DrawString(debugInfo, new Font("Consolas", 12, FontStyle.Bold),
-                                 Brushes.Yellow, this.ClientSize.Width - 250, 10);
+  
         }
         
 
