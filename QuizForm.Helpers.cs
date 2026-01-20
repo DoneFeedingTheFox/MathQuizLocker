@@ -235,55 +235,45 @@ namespace MathQuizLocker
 
 
 
-        private void GenerateQuestion()
-        {
-            // 1. CLEAR PREVIOUS DATA
-            _txtAnswer.Clear();             // Removes the old answer
-            _txtAnswer.Enabled = true;      // Ensures input is active
-            _btnSubmit.Enabled = true;      // Re-enables the button
+		private void GenerateQuestion()
+		{
+			// 1. CLEAR PREVIOUS DATA
+			_txtAnswer.Clear();
+			_txtAnswer.Enabled = true;
+			_btnSubmit.Enabled = true;
 
-            _secondsRemaining = 10;
-            if (_lblTimer != null)
-            {
-                _lblTimer.Text = "10";
-                _lblTimer.Visible = false; // Hidden while dice are in the air
-            }
+			_secondsRemaining = 10;
+			if (_lblTimer != null)
+			{
+				_lblTimer.Text = "10";
+				_lblTimer.Visible = false;
+			}
 
-            // 2. LOGIC FOR BOSS VS TRAINING
-            bool isBoss = _currentMonsterName.ToLower().Contains("boss");
+			// 2. UNIFIED LOGIC
+			// Determine if it's a boss
+			bool isBoss = _currentMonsterName.ToLower().Contains("boss");
 
-            if (isBoss)
-            {
-                // Boss picks from everything you have unlocked
-                int maxFactor = _settings.MaxFactorUnlocked;
-                _a = _rng.Next(1, maxFactor + 1);
-                _b = _rng.Next(1, 11);
-            }
-            else
-            {
-                // Regular monsters stay on the current learning track
-                var q = _quizEngine.GetNextQuestion(false);
-                _a = q.a;
-                _b = q.b;
-            }
+			// CRITICAL: Always get the question from the engine.
+			// This ensures _a and _b match the engine's internal '_currentFact'.
+			var q = _quizEngine.GetNextQuestion(isBoss);
+			_a = q.a;
+			_b = q.b;
 
-            // 3. REFRESH VISUALS
-            _die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
-            _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
-            _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
+			// 3. REFRESH VISUALS
+			_die1.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png"));
+			_die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
+			_picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
 
-            // Ensure they are visible before the physics starts
-            _die1.Visible = true;
-            _die2.Visible = true;
-            _picMultiply.Visible = true;
+			_die1.Visible = true;
+			_die2.Visible = true;
+			_picMultiply.Visible = true;
 
-            // 4. TRIGGER ANIMATION
-            AnimateDiceRoll(); // This must reset _scrambleTicks to 0 internally!
+			// 4. TRIGGER ANIMATION
+			AnimateDiceRoll();
 
-            _txtAnswer.Focus();
-        }
-
-        private void DrawHealthBar(Graphics g, Rectangle bounds, int current, int max, Color color)
+			_txtAnswer.Focus();
+		}
+		private void DrawHealthBar(Graphics g, Rectangle bounds, int current, int max, Color color)
         {
             int barWidth = (int)(bounds.Width * 0.8);
             int barHeight = 12;

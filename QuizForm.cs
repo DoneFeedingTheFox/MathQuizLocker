@@ -8,6 +8,9 @@ namespace MathQuizLocker
 {
     public partial class QuizForm : Form
     {
+   
+		private System.Windows.Forms.Timer _physicsTimer;
+
 		// Core Services
 		private readonly AppSettings _settings;
         private readonly QuizEngine _quizEngine;
@@ -102,11 +105,9 @@ namespace MathQuizLocker
             _settings = settings;
             _quizEngine = new QuizEngine(_settings);
             _session = new GameSessionManager(_settings, _quizEngine);
-
-          
-
-            // Performance Settings
-            this.DoubleBuffered = true;
+	
+			// Performance Settings
+			this.DoubleBuffered = true;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint |
                          ControlStyles.UserPaint |
                          ControlStyles.OptimizedDoubleBuffer, true);
@@ -412,8 +413,18 @@ namespace MathQuizLocker
   
         }
 
+		protected override void OnFormClosing(FormClosingEventArgs e)
+		{
+			// Stop all timers to ensure threads exit
+			_countdownTimer?.Stop();
+			_meleeTimer?.Stop();
+			_animationTimer?.Stop();
+			_physicsTimer?.Stop();
 
-        private void BtnSubmit_Click(object? sender, EventArgs e)
+			base.OnFormClosing(e);
+		}
+
+		private void BtnSubmit_Click(object? sender, EventArgs e)
         {
            
             if (_isAnimating || !int.TryParse(_txtAnswer.Text, out int ans)) return;

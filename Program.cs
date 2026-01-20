@@ -9,13 +9,10 @@ namespace MathQuizLocker
 {
     internal static class Program
     {
-        // Mutex sikrer at kun én instans kjører av gangen
+     
         private static Mutex _mutex = new Mutex(true, @"Global\MathQuizLocker-Unique-ID-99");
 
-        /// <summary>
-        /// Registrerer eller fjerner applikasjonen fra Windows autostart.
-        /// Bruker #if !DEBUG for å hindre at dette skjer på utviklingsmaskinen.
-        /// </summary>
+      
         public static void SetExternalAutostart(bool enable)
         {
 #if !DEBUG
@@ -48,10 +45,10 @@ namespace MathQuizLocker
         [STAThread]
         static void Main()
         {
-            // 1. VELOPACK STARTUP HOOKS
-            VelopackApp.Build().Run();
 
-            // 2. SINGLE INSTANCE CHECK
+			VelopackApp.Build().Run();
+
+           
             if (!_mutex.WaitOne(TimeSpan.Zero, true))
             {
                 return; // Allerede i gang
@@ -62,12 +59,12 @@ namespace MathQuizLocker
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-                // 3. START UPDATER (Splash Screen)
+             
                 using (var updateForm = new UpdateForm())
                 {
                     if (updateForm.ShowDialog() == DialogResult.OK)
                     {
-                        // 4. START MAIN APPLICATION
+                      
                         Application.Run(new LockApplicationContext());
                     }
                     else
@@ -79,20 +76,26 @@ namespace MathQuizLocker
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Startup Error: {ex.Message}");
-                // Fallback: Prøv å kjøre spillet uansett hvis oppdateringen krasjer
+               
                 Application.Run(new LockApplicationContext());
             }
-            finally
-            {
-                // Rydd opp ressurser
-                AssetCache.DisposeAll();
+			finally
+			{
+				AssetCache.DisposeAll();
 
-                if (_mutex != null)
-                {
-                    try { _mutex.ReleaseMutex(); } catch { }
-                    _mutex.Dispose();
-                }
-            }
-        }
+				if (_mutex != null)
+				{
+					try
+					{
+						// This is the important part: explicitly release before disposing
+						_mutex.ReleaseMutex();
+					}
+					catch (Exception) { /* Already released or not owned */ }
+
+					_mutex.Dispose();
+					_mutex = null;
+				}
+			}
+		}
     }
 }

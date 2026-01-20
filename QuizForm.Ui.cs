@@ -152,8 +152,8 @@ namespace MathQuizLocker
 			_btnExit.Click += (s, e) =>
             {
                 AppSettings.Save(_settings);
-                Environment.Exit(0);
-            };
+				Application.Exit();
+			};
         }
 
         private void ShowGameOverScreen()
