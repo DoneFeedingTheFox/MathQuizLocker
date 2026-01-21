@@ -244,7 +244,7 @@ namespace MathQuizLocker
 			else
 			{
 				_btnContinue.Visible = true;
-				_btnExit.Visible = true;
+				_btnExit.Visible = false;
 			}
 
 			LayoutCombat();

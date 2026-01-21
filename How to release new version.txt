@@ -5,13 +5,13 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "Removed the weighted roll system completly and added monster levels"
+git commit -m "Completed the migration of monster and xp reward to json files"
 
 git push origin main
 
 
-git tag v2.0.4
-git push origin v2.0.4
+git tag v2.0.5
+git push origin v2.0.5
 
 
 

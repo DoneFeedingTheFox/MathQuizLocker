@@ -108,78 +108,86 @@ namespace MathQuizLocker
 			}
         }
 
-		private void AnimateChestOpening()
-		{
-			_isChestOpening = true;
-			_chestShakeTicks = 0;
+        private void AnimateChestOpening()
+        {
+            _isChestOpening = true;
+            _chestShakeTicks = 0;
             _btnContinue.Visible = false;
             _btnExit.Visible = false;
 
             int currentLevel = _settings.PlayerProgress.Level;
-			_pendingLootItemFile = $"item_{currentLevel}.png";
-			_pendingKnightStage = currentLevel;
+            _pendingLootItemFile = $"item_{currentLevel}.png";
+            _pendingKnightStage = currentLevel;
 
-			_animationTimer.Stop();
-			_animationTimer.Tick -= ChestTickHandler;
+            _animationTimer.Stop();
+            _animationTimer.Tick -= ChestTickHandler;
 
-			_animationTimer.Interval = 30;
-			_animationTimer.Tick += ChestTickHandler;
-			_animationTimer.Start();
+            _animationTimer.Interval = 30;
+            _animationTimer.Tick += ChestTickHandler;
+            _animationTimer.Start();
 
-			void ChestTickHandler(object? s, EventArgs e)
-			{
-				_chestShakeTicks++;
+            void ChestTickHandler(object? s, EventArgs e)
+            {
+                _chestShakeTicks++;
 
-				if (_chestShakeTicks < 20)
-				{
-					_picChest.Left += _rng.Next(-5, 6);
-				}
-				else if (_chestShakeTicks == 20)
-				{
-					_picChest.Image = AssetCache.GetImageClone(AssetPaths.Items("chest_open_01.png"));
+                // 1. Shaking Phase
+                if (_chestShakeTicks < 20)
+                {
+                    _picChest.Left += _rng.Next(-5, 6);
+                }
+                // 2. The Big Reveal (Exactly at Tick 20)
+                else if (_chestShakeTicks == 20)
+                {
+                    // Change chest to open image
+                    _picChest.Image = AssetCache.GetImageClone(AssetPaths.Items("chest_open_01.png"));
 
-					var lootImg = AssetCache.GetImageClone(AssetPaths.Items(_pendingLootItemFile));
+                    // --- EVOLUTION & PROGRESSION ---
+                    // Update Knight to next stage visually
+                    _equippedKnightStage = _pendingKnightStage;
+                    _settings.PlayerProgress.EquippedKnightStage = _equippedKnightStage;
+                    SetKnightIdleSprite();
+
+                    // Trigger the large floating "LEVEL UP!" text over the knight
+                    ShowDamage(0, _picKnight.Location, Color.Gold);
+
+                    // --- LOOT IMAGE HANDLING ---
+                    var lootImg = AssetCache.GetImageClone(AssetPaths.Items(_pendingLootItemFile));
                     if (lootImg != null)
                     {
                         _picLoot.Image = lootImg;
 
-                        // FIX: Explicitly set size and transparency
                         float scale = this.ClientSize.Height / 1080f;
                         _picLoot.Size = new Size((int)(120 * scale), (int)(120 * scale));
                         _picLoot.BackColor = Color.Transparent;
 
-                        // Position it on the gold pile (right side of center)
+                        // Position it on the gold pile
                         int lootX = _picChest.Left + (_picChest.Width / 2) + 5;
-                        int lootY = _picChest.Top + (_picChest.Height / 4); // Lifted slightly higher
+                        int lootY = _picChest.Top + (_picChest.Height / 4);
 
                         _picLoot.Location = new Point(lootX, lootY);
                         _picLoot.Visible = true;
                         _picLoot.BringToFront();
                     }
 
-                    // 4. Evolution: Update Knight to next stage
-                    _equippedKnightStage = _pendingKnightStage;
-                    _settings.PlayerProgress.EquippedKnightStage = _equippedKnightStage;
-                    SetKnightIdleSprite();
-
-                    // 5. Show the Victory Buttons
+                    // --- UI CLEANUP ---
                     _btnContinue.Visible = true;
                     _btnExit.Visible = false;
                     _btnContinue.Focus();
                 }
+                // 3. End Animation
                 else if (_chestShakeTicks > 50)
                 {
                     _animationTimer.Stop();
-					_animationTimer.Tick -= ChestTickHandler;
-					_isChestOpening = false;
+                    _animationTimer.Tick -= ChestTickHandler;
+                    _isChestOpening = false;
                 }
 
                 this.Invalidate();
             }
-        
         }
 
-        private Rectangle GetPaddedBounds(Image img, Rectangle target)
+
+		private Rectangle GetPaddedBounds(Image img, Rectangle target)
         {
             if (img == null) return target;
 
@@ -222,7 +230,7 @@ namespace MathQuizLocker
 			return currentXp >= requiredXp;
 		}
 
-		private void SpawnMonster()
+        private void SpawnMonster()
         {
             int level = _settings.PlayerProgress.Level;
 
@@ -237,9 +245,43 @@ namespace MathQuizLocker
             UpdateMonsterSprite("idle");
             ApplyBiomeForCurrentLevel();
             UpdatePlayerHud();
-        }
+			// If it's the start of a level (XP is 0), show a biome label
+			if (_settings.PlayerProgress.CurrentXp == 0 && !_isShowingStory)
+			{
+				string biomeName = level switch
+				{
+					1 => "THE SUNNY MEADOWS",
+					2 => "THE MURKY SWAMPS",
+					3 => "THE WHISPERING WOODS",
+					_ => "THE FORGOTTEN CASTLE"
+				};
 
-        private void UpdateMonsterSprite(string state)
+				_lblFeedback.Text = biomeName;
+				_lblFeedback.Font = new Font("Palatino Linotype", 36, FontStyle.Bold);
+				_lblFeedback.ForeColor = Color.Gold;
+				_lblFeedback.AutoSize = true;
+
+				// Use LayoutEngine to calculate centered position
+				_lblFeedback.Location = new Point(
+					(this.ClientSize.Width - _lblFeedback.PreferredWidth) / 2,
+					(this.ClientSize.Height / 2) - 100
+				);
+
+				_lblFeedback.Visible = true;
+				_lblFeedback.BringToFront();
+
+				var hideTimer = new System.Windows.Forms.Timer { Interval = 2500 };
+				hideTimer.Tick += (s, e) => {
+					_lblFeedback.Visible = false;
+					hideTimer.Stop();
+				};
+				hideTimer.Start();
+			}
+		}
+
+
+
+		private void UpdateMonsterSprite(string state)
 		{
 			var config = _monsterService.GetMonster(_currentMonsterName);
 			string suffix = (state == "idle") ? "" : $"_{state}";
@@ -327,14 +369,18 @@ namespace MathQuizLocker
 
         public void ShowDamage(int amount, Point pos, Color color)
         {
-            _damageNumbers.Add(new FloatingText
-            {
-              
-                Position = new PointF(pos.X + 50, pos.Y),
-                TextColor = color,
-                Opacity = 1.0f
-            });
-        }
+
+			string textToShow = amount == 0 ? "LEVEL UP!" : $"-{amount}";
+
+			_damageNumbers.Add(new FloatingText
+			{
+				Text = textToShow,
+				Position = new PointF(pos.X + (_picKnight.Width / 4), pos.Y - 50),
+				TextColor = color,
+				Opacity = 1.0f,
+				VelocityY = -3.0f // Make it float up faster for the level up
+			});
+		}
 
         public class FloatingText
         {
