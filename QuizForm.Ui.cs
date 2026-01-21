@@ -126,21 +126,15 @@ namespace MathQuizLocker
 				{
 					_btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
 
-					// Reset this flag so we don't loop back to story unexpectedly
-					_awaitingChestOpen = false;
 
 					// Show the story overlay
 					ShowStoryScreen();
 				}
 				else
 				{
-					
-					var startMonster = _monsterService.GetMonster("goblin");
-
 				
-					_session.StartNewBattle(startMonster.MaxHealth, startMonster.XpReward);
 					SpawnMonster();
-                    ApplyBiomeForCurrentLevel();
+                 
 
                     _btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
 					_txtAnswer.Visible = _btnSubmit.Visible = true;
@@ -191,66 +185,72 @@ namespace MathQuizLocker
             this.Invalidate();
         }
 
-        private void ShowVictoryScreen()
-        {
-
+		private void ShowVictoryScreen()
+		{
 			_awaitingChestOpen = false;
+			bool wasBossFight = _currentMonsterName.ToLower().Contains("boss");
 
-            if (_currentMonsterName.ToLower().Contains("boss"))
-            {
-              
-                _quizEngine.PromoteToNextLevel();
-                _awaitingChestOpen = true;
-            }
+			int currentLevel = _settings.PlayerProgress.Level;
+			int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
+			int killReward = _session.CurrentBattleXpReward;
 
-            // 1. Calculate XP Reward 
-          
-			int requiredXp = XpSystem.GetXpRequiredForNextLevel(_settings.PlayerProgress.Level);
-            int killReward = (int)(requiredXp * 0.6); // 60% of required XP for next level
+			// --- DEBUG BLOCK ---
+			System.Diagnostics.Debug.WriteLine($"--- VICTORY DEBUG ---");
+			System.Diagnostics.Debug.WriteLine($"Monster: {_currentMonsterName} (Boss: {wasBossFight})");
+			System.Diagnostics.Debug.WriteLine($"XP Before: {_settings.PlayerProgress.CurrentXp}");
+			System.Diagnostics.Debug.WriteLine($"XP Reward: {killReward}");
+			System.Diagnostics.Debug.WriteLine($"XP Required for Level {currentLevel}: {requiredXp}");
+			// -------------------
+
 			_settings.PlayerProgress.CurrentXp += killReward;
 
-			// 2. Check for Level Up
-			if (_settings.PlayerProgress.CurrentXp >= requiredXp)
+			// 2. Logic Branching
+			if (wasBossFight)
 			{
-				_settings.PlayerProgress.CurrentXp -= requiredXp;
+		
 				_settings.PlayerProgress.Level++;
+				_settings.PlayerProgress.CurrentXp = 0; // Reset or carry over
 
-				// Increase the math limit but cap it at 10
-				if (_settings.MaxFactorUnlocked < 10)
-				{
-					_settings.MaxFactorUnlocked++;				
-				}
+				if (_settings.MaxFactorUnlocked < 10) _settings.MaxFactorUnlocked++;
 
-				_awaitingChestOpen = true;
-			
+				_awaitingChestOpen = true; // This triggers the chest
+				System.Diagnostics.Debug.WriteLine("EVENT: Boss Defeated! Leveling Up.");
 			}
+			else if (_settings.PlayerProgress.CurrentXp >= requiredXp)
+				{
+					// We have enough XP to fight the boss! 
+					// Do NOT level up yet, and do NOT show loot.
+					// Just let the player click "Continue" to encounter the boss.
+				
+					System.Diagnostics.Debug.WriteLine("EVENT: XP Goal Reached! Next monster will be a BOSS.");
+				}
+			
 
-			// 3. Update HUD to show new XP/Level
+			System.Diagnostics.Debug.WriteLine($"XP After: {_settings.PlayerProgress.CurrentXp}");
+			System.Diagnostics.Debug.WriteLine($"----------------------");
+
 			UpdatePlayerHud();
-            AppSettings.Save(_settings);
+			AppSettings.Save(_settings);
 
-            // 4. Transition UI
-            _txtAnswer.Visible = _btnSubmit.Visible = _die1.Visible = _die2.Visible = _picMultiply.Visible = false;
+			// 3. UI Transition
+			_txtAnswer.Visible = _btnSubmit.Visible = _die1.Visible = _die2.Visible = _picMultiply.Visible = false;
 
 			if (_awaitingChestOpen)
 			{
-                _btnContinue.Visible = false;
-                _btnExit.Visible = false;
-
-                ShowLootDrop();
-				
-			
+				_btnContinue.Visible = false;
+				_btnExit.Visible = false;
+				ShowLootDrop();
 			}
 			else
 			{
 				_btnContinue.Visible = true;
-				_btnExit.Visible = true; // Keep Exit here for normal non-levelup fights
+				_btnExit.Visible = true;
 			}
 
 			LayoutCombat();
 		}
 
-        private void ShowStoryScreen()
+		private void ShowStoryScreen()
         {
             _isShowingStory = true;
             ApplyBiomeForCurrentLevel();

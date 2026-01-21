@@ -4,36 +4,21 @@ using System.Linq;
 
 namespace MathQuizLocker
 {
-   
-    public static class XpSystem
-    {
-        public static int GetXpRequiredForNextLevel(int currentLevel)
-        {
-            return 100 + (currentLevel * 50);
-        }
 
-        public static bool AddXp(PlayerProgress progress, int amount)
-        {
-            if (amount <= 0) return false;
+	public static class XpSystem
+	{
+		public static int GetXpRequiredForNextLevel(int currentLevel)
+		{
+			return 100 + (currentLevel * 50);
+		}
 
-            progress.CurrentXp += amount;
-            progress.TotalXp += amount;
+		public static void AddXp(PlayerProgress progress, int amount)
+		{
+			if (amount <= 0) return;
 
-            bool leveledUp = false;
+			progress.CurrentXp += amount;
+			progress.TotalXp += amount;
 
-            while (true)
-            {
-                int xpNeeded = GetXpRequiredForNextLevel(progress.Level);
-                if (progress.CurrentXp < xpNeeded)
-                    break;
-
-                progress.CurrentXp -= xpNeeded;
-                progress.Level++;
-                leveledUp = true;
-            }
-
-            return leveledUp;
-        }
-
-    }
+		}
+	}
 }

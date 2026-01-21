@@ -11,7 +11,9 @@ namespace MathQuizLocker.Services
         public bool LeveledUp { get; set; }
         public string Message { get; set; } = "";
         public Color MessageColor { get; set; }
-    }
+
+	
+	}
 
     public class GameSessionManager
     {
@@ -23,7 +25,11 @@ namespace MathQuizLocker.Services
         private int _playerHealth;
         private const int MaxPlayerHealth = 100;
         private int _maxMonsterHealth;
-		private int _currentMonsterXpReward; 
+		private int _currentMonsterXpReward;
+
+		public int CurrentBattleXpReward { get; private set; }
+
+
 
 
 		// Public Properties for the UI to read
@@ -51,6 +57,8 @@ namespace MathQuizLocker.Services
 
 			_maxMonsterHealth = maxHealth;
 			_monsterHealth = maxHealth;
+
+			// Assign to the private variable you already have
 			_currentMonsterXpReward = xpReward;
 
 			_playerHealth = MaxPlayerHealth;
@@ -73,7 +81,7 @@ namespace MathQuizLocker.Services
 				xpGained = _currentMonsterXpReward;
 
 				// Use your XpSystem to update progress
-				leveledUp = XpSystem.AddXp(_settings.PlayerProgress, xpGained);
+				XpSystem.AddXp(_progress, _currentMonsterXpReward);
 
 				TotalKills++;
 				AppSettings.Save(_settings); // Save progress immediately on kill

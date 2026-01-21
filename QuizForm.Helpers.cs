@@ -210,20 +210,19 @@ namespace MathQuizLocker
             this.Invalidate();
         }
 
-        private bool CheckIfBossShouldSpawn()
-        {
-            int currentXp = _settings.PlayerProgress.CurrentXp;
-            int currentLevel = _settings.PlayerProgress.Level;
+		private bool CheckIfBossShouldSpawn()
+		{
+			int currentXp = _settings.PlayerProgress.CurrentXp;
+			int currentLevel = _settings.PlayerProgress.Level;
 
-            // Get exactly how much XP this level needs (e.g., 100)
-            int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
+			// Get the XP goal for the current level (e.g., 100 XP)
+			int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
 
-            // If I have 100/100 XP, the NEXT monster must be a Boss.
-            // If I only have 90/100, keep spawning regular monsters.
-            return currentXp >= requiredXp;
-        }
+			// If I have 100/100 or 105/100, the next monster IS a boss.
+			return currentXp >= requiredXp;
+		}
 
-        private void SpawnMonster()
+		private void SpawnMonster()
         {
             int level = _settings.PlayerProgress.Level;
 

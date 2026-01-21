@@ -19,16 +19,7 @@ namespace MathQuizLocker
 		    UpdatePlayerHud();
             ShowDamage(damage, _picMonster.Location, Color.Red);
 
-			if (isDefeated)
-			{
-				string xpMsg = $"+{xpGained} XP";
-				if (leveledUp) xpMsg = "LEVEL UP! " + xpMsg;
-
-				// Show XP gained floating near the knight or feedback label
-				_lblFeedback.Text = xpMsg;
-				_lblFeedback.ForeColor = leveledUp ? Color.Gold : Color.White;
-			}
-
+		
 			// Change the sprite once to the attack frame
 			_picKnight.Image = AssetCache.GetImageClone(AssetPaths.KnightAttack(_equippedKnightStage));
 
