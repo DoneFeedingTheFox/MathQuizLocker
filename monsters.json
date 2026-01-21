@@ -1,6 +1,7 @@
 [
   {
     "Name": "goblin",
+    "Level": 1,
     "MaxHealth": 60,
     "XpReward": 0,
     "IsBoss": false,
@@ -8,6 +9,7 @@
   },
   {
     "Name": "goblin_boss",
+    "Level": 1,
     "MaxHealth": 120,
     "XpReward": 250,
     "IsBoss": true,
@@ -15,9 +17,18 @@
   },
   {
     "Name": "skeleton",
+    "Level": 2,
     "MaxHealth": 100,
     "XpReward": 0,
     "IsBoss": false,
+    "SpritePath": "Monsters/skeleton"
+  },
+  {
+    "Name": "skeleton_boss",
+    "Level": 2,
+    "MaxHealth": 120,
+    "XpReward": 250,
+    "IsBoss": true,
     "SpritePath": "Monsters/skeleton"
   }
 ]

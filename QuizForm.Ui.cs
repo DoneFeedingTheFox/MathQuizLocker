@@ -218,10 +218,7 @@ namespace MathQuizLocker
 				// Increase the math limit but cap it at 10
 				if (_settings.MaxFactorUnlocked < 10)
 				{
-					_settings.MaxFactorUnlocked++;
-
-					// CRITICAL: This populates the dictionary with the next set of numbers (e.g., the 3s)
-					_quizEngine.InitializeForCurrentLevel();
+					_settings.MaxFactorUnlocked++;				
 				}
 
 				_awaitingChestOpen = true;

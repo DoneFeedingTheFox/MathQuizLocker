@@ -5,7 +5,7 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "Reworked the QuizEngine and Boss logic"
+git commit -m "Removed the weighted roll system completly and added monster levels"
 
 git push origin main
 

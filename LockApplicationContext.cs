@@ -31,12 +31,7 @@ namespace MathQuizLocker
             ShowQuiz();
         }
 
-        private void CheckIdle()
-        {
-            if (_quizOpen) return;
-            var idle = IdleHelper.GetIdleTime();
-            if (idle > TimeSpan.FromMinutes(_settings.IdleMinutesBeforeLock)) ShowQuiz();
-        }
+      
 
         private void ShowQuiz()
         {

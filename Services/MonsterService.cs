@@ -39,7 +39,22 @@ namespace MathQuizLocker.Services
 			}
 		}
 
-		public MonsterConfig GetMonster(string name)
+        public MonsterConfig GetMonsterByLevel(int playerLevel, bool wantBoss)
+        {
+       
+            var monster = _monsters.FirstOrDefault(m => m.Level == playerLevel && m.IsBoss == wantBoss);
+            monster ??= _monsters.FirstOrDefault(m => m.Level == playerLevel);
+
+            return monster ?? (_monsters.Count > 0 ? _monsters[0] : new MonsterConfig
+            {
+                Name = "Default",
+                MaxHealth = 50,
+                Level = 1,
+                SpritePath = "Monsters/goblin"
+            });
+        }
+
+        public MonsterConfig GetMonster(string name)
 		{
 			var monster = _monsters.FirstOrDefault(m => m.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 

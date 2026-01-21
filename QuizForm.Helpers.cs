@@ -2,6 +2,9 @@
 using System.Drawing;
 using System.IO;
 using MathQuizLocker.Services;
+using MathQuizLocker.Models;
+
+
 
 namespace MathQuizLocker
 {
@@ -29,14 +32,20 @@ namespace MathQuizLocker
 
             // 3. Determine base name based on level
             int level = _settings.PlayerProgress.Level;
-            string baseName = (level > 4) ? "castle_01" :
-                              (level > 3) ? "cave_01" :
-                              (level > 2) ? "forest_01" :
-                              (level > 1) ? "swamp_01" : "meadow_01";
+
+            string baseName = level switch
+            {
+                1 => "meadow_01",
+                2 => "swamp_01",
+                3 => "forest_01",
+                4 => "cave_01",
+                _ => "castle_01"
+            };
 
             // 4. Check for Boss Suffix
             // Ensure SpawnMonster() was called before this method!
-            if (_currentMonsterName != null && _currentMonsterName.Contains("_boss"))
+            if (!string.IsNullOrEmpty(_currentMonsterName) &&
+         _currentMonsterName.Contains("boss", StringComparison.OrdinalIgnoreCase))
             {
                 baseName += "_boss";
             }
@@ -89,9 +98,6 @@ namespace MathQuizLocker
             {
 				// 1. Wipe the progress object
 				_settings.ResetProgress();
-
-				// 2. Re-initialize the quiz engine for level 1
-				_quizEngine.InitializeForCurrentLevel();
 
 				// 3. Restart the application
 				Application.Restart();
@@ -204,43 +210,37 @@ namespace MathQuizLocker
             this.Invalidate();
         }
 
-		private void SpawnMonster()
-		{
-			// 1. Determine which BASE monster to spawn based on tier
-			int tier = Math.Max(1, _settings.MaxFactorUnlocked);
-			string baseName = tier < 2 ? "goblin" :
-							  tier < 4 ? "skeleton" :
-							  tier < 5 ? "slime" :
-							  tier < 6 ? "orc" : "dragon";
+        private bool CheckIfBossShouldSpawn()
+        {
+            int currentXp = _settings.PlayerProgress.CurrentXp;
+            int currentLevel = _settings.PlayerProgress.Level;
 
-			// 2. Logic to decide if it's a Boss encounter
-			int currentLevel = _settings.PlayerProgress.Level;
-			int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
+            // Get exactly how much XP this level needs (e.g., 100)
+            int requiredXp = XpSystem.GetXpRequiredForNextLevel(currentLevel);
 
-			// Using your existing estimated reward logic to trigger a boss
-			int estimatedReward = (int)(requiredXp * 0.6);
-			string lookupName = baseName;
+            // If I have 100/100 XP, the NEXT monster must be a Boss.
+            // If I only have 90/100, keep spawning regular monsters.
+            return currentXp >= requiredXp;
+        }
 
-			if (_settings.PlayerProgress.CurrentXp + estimatedReward >= requiredXp)
-			{
-				lookupName += "_boss";
-			}
+        private void SpawnMonster()
+        {
+            int level = _settings.PlayerProgress.Level;
 
-			// 3. FETCH data from the JSON config via the service
-			var monsterConfig = _monsterService.GetMonster(lookupName);
+            bool isBoss = CheckIfBossShouldSpawn();
 
-			// 4. Update Game State
-			_currentMonsterName = monsterConfig.Name;
 
-			// Apply the health and reward from the JSON file to the current session
-			_session.StartNewBattle(monsterConfig.MaxHealth, monsterConfig.XpReward);
+            var monsterConfig = _monsterService.GetMonsterByLevel(level, isBoss);
 
-			// 5. REFRESH VISUALS
-			UpdateMonsterSprite("idle");
-			UpdatePlayerHud(); // Refresh health bars to show the new monster's max health
-		}
+            _currentMonsterName = monsterConfig.Name;
+            _session.StartNewBattle(monsterConfig.MaxHealth, monsterConfig.XpReward);
 
-		private void UpdateMonsterSprite(string state)
+            UpdateMonsterSprite("idle");
+            ApplyBiomeForCurrentLevel();
+            UpdatePlayerHud();
+        }
+
+        private void UpdateMonsterSprite(string state)
 		{
 			var config = _monsterService.GetMonster(_currentMonsterName);
 			string suffix = (state == "idle") ? "" : $"_{state}";
@@ -261,19 +261,32 @@ namespace MathQuizLocker
 			}
 		}
 
+        public Question GenerateRandomQuestion(int playerLevel)
+        {
 
+            // 1. Determine the range based on level (e.g., Level 3 = up to 4x10)
+            int maxA = Math.Min(12, playerLevel + 1);
+            int maxB = 10;
 
-		private void GenerateQuestion()
+            // 2. Generate a fresh random pair every time
+            // This ignores the 'Progress' dictionary entirely!
+            int a = _random.Next(1, maxA + 1);
+            int b = _random.Next(1, maxB + 1);
+
+            return new Question(a, b);
+        }
+
+        private void GenerateQuestion()
 		{
 			// 1. CLEAR PREVIOUS DATA
 			_txtAnswer.Clear();
 			_txtAnswer.Enabled = true;
 			_btnSubmit.Enabled = true;
 
-			_secondsRemaining = 10;
+			_secondsRemaining = 5;
 			if (_lblTimer != null)
 			{
-				_lblTimer.Text = "10";
+				_lblTimer.Text = "5";
 				_lblTimer.Visible = false;
 			}
 
@@ -282,7 +295,7 @@ namespace MathQuizLocker
 
 			// CRITICAL: Always get the question from the engine.
 			// This ensures _a and _b match the engine's internal '_currentFact'.
-			var q = _quizEngine.GetNextQuestion(isBoss);
+			var q = _quizEngine.GetNextQuestion();
 			_a = q.a;
 			_b = q.b;
 
@@ -433,10 +446,10 @@ namespace MathQuizLocker
 			_countdownTimer.Stop();
 
 			// Reset the internal counter to a full 10 seconds
-			_secondsRemaining = 10;
+			_secondsRemaining = 5;
 
 			// 5. Restart the timer and enable input
-			_lblTimer.Text = "10";
+			_lblTimer.Text = "5";
 			_lblTimer.Visible = true;
 			_txtAnswer.Enabled = true;
 			_btnSubmit.Enabled = true;

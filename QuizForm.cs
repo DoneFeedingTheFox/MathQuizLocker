@@ -58,10 +58,12 @@ namespace MathQuizLocker
 		// Countdown Timer for answering questions
 		private System.Windows.Forms.Timer _countdownTimer = new();
 		private int _secondsRemaining = 10;
-		private Label _lblTimer; 
+		private Label _lblTimer;
 
-		// Enable double buffering to reduce flicker
-		protected override CreateParams CreateParams
+        private readonly Random _random = new Random();
+
+        // Enable double buffering to reduce flicker
+        protected override CreateParams CreateParams
         {
             get
             {

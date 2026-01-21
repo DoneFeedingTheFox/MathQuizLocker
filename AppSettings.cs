@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
+﻿using System.Text.Json;
 using MathQuizLocker.Models;
 
 namespace MathQuizLocker
@@ -9,7 +6,7 @@ namespace MathQuizLocker
     public class AppSettings
     {
         // --- Core Settings ---
-        public int IdleMinutesBeforeLock { get; set; } = 5;
+   
         public bool LockOnWakeFromSleep { get; set; } = true;
         public bool ShowQuizOnStartup { get; set; } = true;
         public int RequiredCorrectAnswers { get; set; } = 10;
@@ -20,7 +17,7 @@ namespace MathQuizLocker
 
         // --- Spaced Repetition Data ---
         // Dictionary key format: "AxB" (e.g., "2x5")
-        public Dictionary<string, FactProgress> Progress { get; set; } = new Dictionary<string, FactProgress>();
+    
 
         private static readonly string SettingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -76,7 +73,7 @@ namespace MathQuizLocker
         {
             PlayerProgress = new PlayerProgress();
             MaxFactorUnlocked = 2;
-            Progress.Clear();
+       
             Save(this);
         }
     }
