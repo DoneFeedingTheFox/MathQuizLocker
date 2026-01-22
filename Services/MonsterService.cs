@@ -33,7 +33,7 @@ namespace MathQuizLocker.Services
 				foreach (var monster in rawList)
 				{
 					// This turns "monsters/goblin" into "C:/Users/.../bin/Debug/Resources/monsters/goblin"
-					monster.SpritePath = Path.Combine(baseDir, "Resources", monster.SpritePath);
+					monster.SpritePath = Path.Combine(baseDir, "Assets", monster.SpritePath);
 				}
 				_monsters = rawList;
 			}

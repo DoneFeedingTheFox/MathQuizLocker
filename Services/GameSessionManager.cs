@@ -36,37 +36,36 @@ namespace MathQuizLocker.Services
 		public int CurrentPlayerHealth => _playerHealth;
         public int CurrentMonsterHealth => _monsterHealth;
         public int MaxMonsterHealth => _maxMonsterHealth;
-
-        public int CorrectCount { get; private set; }
         public int TotalKills { get; private set; } // Track kills for Game Over screen
         public bool XpBoostActive { get; set; }
 
+        private int _currentMonsterAttackDamage;
+        public int CurrentMonsterAttackInterval { get; private set; }
+
         public GameSessionManager(AppSettings settings, QuizEngine engine)
-        {
-			// Dependency Injection
+        {		
 			_settings = settings;
             _quizEngine = engine;                  
-            _playerHealth = MaxPlayerHealth;
-
-   
+            _playerHealth = MaxPlayerHealth;   
         }
 
-		public void StartNewBattle(int maxHealth, int xpReward)
-		{
+        public void StartNewBattle(MonsterConfig config)
+        {
 			_progress = _settings.PlayerProgress;
+			_maxMonsterHealth = config.MaxHealth;
+			_monsterHealth = config.MaxHealth;			
+			_currentMonsterXpReward = config.XpReward;
 
-			_maxMonsterHealth = maxHealth;
-			_monsterHealth = maxHealth;
+            _currentMonsterAttackDamage = config.AttackDamage;
+            CurrentMonsterAttackInterval = config.AttackInterval;
 
-			// Assign to the private variable you already have
-			_currentMonsterXpReward = xpReward;
+            _playerHealth = MaxPlayerHealth;
 
-			_playerHealth = MaxPlayerHealth;
-
-			Console.WriteLine($"Battle Start: {maxHealth} HP, {xpReward} XP Reward");
+			Console.WriteLine($"Battle Start: {config.MaxHealth} HP, {config.XpReward} XP Reward");
 		}
 
-		public bool ApplyDamage(int damage, out int xpGained, out bool leveledUp)
+        public int GetTimerDamage() => _currentMonsterAttackDamage;
+        public bool ApplyDamage(int damage, out int xpGained, out bool leveledUp)
 		{
 			xpGained = 0;
 			leveledUp = false;
@@ -107,8 +106,6 @@ namespace MathQuizLocker.Services
 
             if (isCorrect)
             {
-                CorrectCount++;
-
                 AppSettings.Save(_settings);
                 result.Message = result.LeveledUp ? $"LEVEL UP! Level {_settings.PlayerProgress.Level}!" : $"Correct!";
                 result.MessageColor = result.LeveledUp ? Color.Gold : Color.LimeGreen;
@@ -120,7 +117,5 @@ namespace MathQuizLocker.Services
             }
             return result;
         }
-
-        public bool IsSessionComplete() => CorrectCount >= (_settings.RequiredCorrectAnswers > 0 ? _settings.RequiredCorrectAnswers : 10);
     }
 }

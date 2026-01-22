@@ -5,7 +5,9 @@
     "MaxHealth": 60,
     "XpReward": 75,
     "IsBoss": false,
-    "SpritePath": "Monsters/goblin"
+    "SpritePath": "Monsters/goblin",
+    "AttackInterval": 10,
+    "AttackDamage": 20
   },
   {
     "Name": "goblin_boss",
@@ -13,7 +15,9 @@
     "MaxHealth": 120,
     "XpReward": 250,
     "IsBoss": true,
-    "SpritePath": "Monsters/goblin_boss"
+    "SpritePath": "Monsters/goblin_boss",
+    "AttackInterval": 20,
+    "AttackDamage": 40
   },
   {
     "Name": "skeleton",
@@ -21,7 +25,9 @@
     "MaxHealth": 100,
     "XpReward": 100,
     "IsBoss": false,
-    "SpritePath": "Monsters/skeleton"
+    "SpritePath": "Monsters/skeleton",
+    "AttackInterval": 10,
+    "AttackDamage": 30
   },
   {
     "Name": "skeleton_boss",
@@ -29,6 +35,8 @@
     "MaxHealth": 120,
     "XpReward": 0,
     "IsBoss": true,
-    "SpritePath": "Monsters/skeleton"
+    "SpritePath": "Monsters/skeleton",
+    "AttackInterval": 20,
+    "AttackDamage": 35
   }
 ]

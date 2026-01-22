@@ -233,20 +233,27 @@ namespace MathQuizLocker
         private void SpawnMonster()
         {
             int level = _settings.PlayerProgress.Level;
-
             bool isBoss = CheckIfBossShouldSpawn();
 
-
             var monsterConfig = _monsterService.GetMonsterByLevel(level, isBoss);
-
             _currentMonsterName = monsterConfig.Name;
-            _session.StartNewBattle(monsterConfig.MaxHealth, monsterConfig.XpReward);
+         
+
+
+            _session.StartNewBattle(monsterConfig);
 
             UpdateMonsterSprite("idle");
             ApplyBiomeForCurrentLevel();
             UpdatePlayerHud();
-			// If it's the start of a level (XP is 0), show a biome label
-			if (_settings.PlayerProgress.CurrentXp == 0 && !_isShowingStory)
+
+            _secondsRemaining = _session.CurrentMonsterAttackInterval;
+            _lblTimer.Text = _secondsRemaining.ToString();
+            _lblTimer.Visible = true;
+            _lblTimer.BringToFront();
+            _countdownTimer.Start();
+
+            // If it's the start of a level (XP is 0), show a biome label
+            if (_settings.PlayerProgress.CurrentXp == 0 && !_isShowingStory)
 			{
 				string biomeName = level switch
 				{
@@ -270,7 +277,8 @@ namespace MathQuizLocker
 				_lblFeedback.Visible = true;
 				_lblFeedback.BringToFront();
 
-				var hideTimer = new System.Windows.Forms.Timer { Interval = 2500 };
+
+                var hideTimer = new System.Windows.Forms.Timer { Interval = 2500 };
 				hideTimer.Tick += (s, e) => {
 					_lblFeedback.Visible = false;
 					hideTimer.Stop();
@@ -324,14 +332,7 @@ namespace MathQuizLocker
 			_txtAnswer.Enabled = true;
 			_btnSubmit.Enabled = true;
 
-			_secondsRemaining = 5;
-			if (_lblTimer != null)
-			{
-				_lblTimer.Text = "5";
-				_lblTimer.Visible = false;
-			}
-
-		
+					
 			bool isBoss = _currentMonsterName.ToLower().Contains("boss");
 
 			// CRITICAL: Always get the question from the engine.
@@ -378,17 +379,17 @@ namespace MathQuizLocker
 				Position = new PointF(pos.X + (_picKnight.Width / 4), pos.Y - 50),
 				TextColor = color,
 				Opacity = 1.0f,
-				VelocityY = -3.0f // Make it float up faster for the level up
+				
 			});
 		}
 
         public class FloatingText
         {
-            public string Text;
+            public string Text { get; set; }
             public PointF Position;
-            public float Opacity = 1.0f;
-            public Color TextColor;
-            public float VelocityY = -2.0f;
+            public Color TextColor { get; set; }
+            public float Opacity { get; set; } = 1.0f;
+            public float VelocityY; 
         }
 
         private void AnimateDiceRoll()
@@ -486,26 +487,14 @@ namespace MathQuizLocker
             _die2.Image = AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png"));
             _picMultiply.Image = AssetCache.GetImageClone(AssetPaths.Dice("multiply.png"));
 
-			// 4. RESET AND START THE TIMER
-			// Stop any existing timer to prevent double-ticking
-			_countdownTimer.Stop();
-
-			// Reset the internal counter to a full 10 seconds
-			_secondsRemaining = 5;
-
-			// 5. Restart the timer and enable input
-			_lblTimer.Text = "5";
-			_lblTimer.Visible = true;
+			
 			_txtAnswer.Enabled = true;
 			_btnSubmit.Enabled = true;
 	
 
 			_txtAnswer.Focus();
 
-			_countdownTimer.Start();
-
-
-			this.Invalidate();
+            this.Invalidate();
         }
     }
 }

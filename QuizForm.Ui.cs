@@ -36,7 +36,7 @@ namespace MathQuizLocker
 
 			// Configure the timer object
 			_countdownTimer.Interval = 1000; // 1 second
-			_countdownTimer.Tick += CountdownTimer_Tick;
+			
 			// 1. Set Form Styles First
 			this.UpdateStyles();
             this.SetStyle(ControlStyles.UserPaint, true);
@@ -177,8 +177,8 @@ namespace MathQuizLocker
 
 			var initialConfig = _monsterService.GetMonster("goblin");
 
-			_session.StartNewBattle(initialConfig.MaxHealth, initialConfig.XpReward);
-			GenerateQuestion();
+            _session.StartNewBattle(initialConfig);
+            GenerateQuestion();
 
             _txtAnswer.Visible = _btnSubmit.Visible = true;
             _txtAnswer.Focus();
@@ -318,9 +318,10 @@ namespace MathQuizLocker
 
             _picMonster.Size = new Size((int)(450 * scale), (int)(550 * scale));
             _picMonster.Location = new Point((int)(w * 0.65), (int)(h * 0.90 - _picMonster.Height));
+            _monsterOriginalPos = _picMonster.Location; // Capture the "Idle" spot
 
-			// Timer Positioning
-			_lblTimer.Location = new Point(w / 2 - _lblTimer.Width / 2, _picMultiply.Bottom + 20);
+            // Timer Positioning
+            _lblTimer.Location = new Point(w / 2 - _lblTimer.Width / 2, _picMultiply.Bottom + 20);
 
 			// Dice & Math Sign Positioning (Final Landing Spots)
 			int diceSize = (int)(120 * scale);

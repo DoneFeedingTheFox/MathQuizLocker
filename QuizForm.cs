@@ -26,6 +26,7 @@ namespace MathQuizLocker
 
         // Animation logic
         private Point _knightOriginalPos;
+        private Point _monsterOriginalPos;
         private System.Windows.Forms.Timer _animationTimer = new();
         private bool _isDicePhysicsActive = false;
 
@@ -49,7 +50,7 @@ namespace MathQuizLocker
         private List<FloatingText> _damageNumbers = new List<FloatingText>();
 
 		// story mode
-		private PictureBox _picScroll;
+		
 		private Label _lblStoryText;
 		private Button _btnStoryContinue, _btnStoryExit;
 		private bool _isShowingStory = false;
@@ -61,6 +62,8 @@ namespace MathQuizLocker
 		private Label _lblTimer;
 
         private readonly Random _random = new Random();
+
+      
 
         // Enable double buffering to reduce flicker
         protected override CreateParams CreateParams
@@ -75,70 +78,90 @@ namespace MathQuizLocker
 
 		private void CountdownTimer_Tick(object? sender, EventArgs e)
 		{
-			_secondsRemaining--;
+            if (_session.CurrentPlayerHealth <= 0)
+            {
+                _countdownTimer.Stop();
+                return;
+            }
+            _secondsRemaining--;
 			_lblTimer.Text = $"{_secondsRemaining}";
 
-			if (_secondsRemaining <= 0)
-			{
-				_countdownTimer.Stop();
-				_lblTimer.Visible = false;
+            if (_secondsRemaining <= 0)
+            {
+                // Get automated damage from the session
+                int damage = _session.GetTimerDamage();
 
-				// Disable input and trigger monster strike
-				_txtAnswer.Enabled = false;
-				_btnSubmit.Enabled = false;
+                // Reset the timer to this specific monster's speed
+                _secondsRemaining = _session.CurrentMonsterAttackInterval;
 
-                int failureDmg;
-                if (_currentMonsterName.ToLower().Contains("boss"))
-                {
-                    failureDmg = 50; // The BOSS SLAP
-              
-                }
-                else
-                {
-                    failureDmg = _a * _b; // Normal monster punishment
-               
-                }
-
-                AnimateMonsterAttack(failureDmg);
+                AnimateMonsterAttack(damage);
             }
         }
-		
 
-		public QuizForm(AppSettings settings)
+
+        public QuizForm(AppSettings settings)
         {
             _settings = settings;
             _quizEngine = new QuizEngine(_settings);
             _session = new GameSessionManager(_settings, _quizEngine);
 
-			_monsterService = new MonsterService();
+            _monsterService = new MonsterService();
 
-			// Performance Settings
-			this.DoubleBuffered = true;
+            // 1. Performance Settings
+            this.DoubleBuffered = true;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint |
-                         ControlStyles.UserPaint |
-                         ControlStyles.OptimizedDoubleBuffer, true);
+                          ControlStyles.UserPaint |
+                          ControlStyles.OptimizedDoubleBuffer, true);
             this.SetStyle(ControlStyles.Opaque, false);
 
-            // Initialize Custom Game UI
+            // 2. Initialize UI
             LocalizationService.LoadLanguage("no");
-            InitializeCombatUi(); 
+            InitializeCombatUi();
             InitStoryUi();
 
-	
+            // 3. Initialize & Start Physics Timer for Damage Cleanup
+            _physicsTimer = new System.Windows.Forms.Timer { Interval = 30 }; // ~33 FPS
+            _physicsTimer.Tick += (s, e) =>
+            {
+                // Only run cleanup if there are numbers to remove
+                if (_damageNumbers.Count > 0)
+                {
+                    bool needsRedraw = false;
+                    for (int i = _damageNumbers.Count - 1; i >= 0; i--)
+                    {
+                        // Repurpose 'Opacity' as a life counter
+                        _damageNumbers[i].Opacity -= 0.05f;
 
-			// Set initial progression state
-			_equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0
+                        if (_damageNumbers[i].Opacity <= 0)
+                        {
+                            _damageNumbers.RemoveAt(i);
+                            needsRedraw = true;
+                        }
+                    }
+
+                    // Only redraw if a number actually vanished
+                    if (needsRedraw) this.Invalidate();
+                }
+            };
+            _physicsTimer.Start();
+
+            // 4. Set initial progression state
+            _equippedKnightStage = _settings.PlayerProgress.EquippedKnightStage > 0
                 ? _settings.PlayerProgress.EquippedKnightStage
                 : 1;
 
-            // Handle resizing to keep the story parchment aligned on different laptops
+            // 5. Wire up Events
             this.Resize += QuizForm_Resize;
+
+            // Wire up the countdown timer here as well if not done in InitializeCombatUi
+            _countdownTimer.Tick += CountdownTimer_Tick;
+            _countdownTimer.Interval = 1000;
         }
 
 
-		
 
-		private Rectangle GetCombatZone()
+
+        private Rectangle GetCombatZone()
         {
             // Capture the highest point (Health Bars) and lowest point (Feet)
             int yTop = Math.Min(_picKnight.Top, _picMonster.Top) - 60;
@@ -216,7 +239,7 @@ namespace MathQuizLocker
 			var initialMonster = _monsterService.GetMonster("goblin");
 
 			// 3. FIX: Pass the required parameters to the session
-			_session.StartNewBattle(initialMonster.MaxHealth, initialMonster.XpReward);
+			_session.StartNewBattle(initialMonster);
 
 
 			// 5. Trigger Game Logic
@@ -406,22 +429,19 @@ namespace MathQuizLocker
 			if (_picLoot?.Visible == true && _picLoot.Image != null)
 				g.DrawImage(_picLoot.Image, _picLoot.Bounds);
 
-			// 5. Draw Floating Damage
-			for (int i = _damageNumbers.Count - 1; i >= 0; i--)
-			{
-				var ft = _damageNumbers[i];
-				using (Brush b = new SolidBrush(Color.FromArgb((int)(ft.Opacity * 255), ft.TextColor)))
-				{
-					g.DrawString(ft.Text, new Font("Segoe UI", 50, FontStyle.Bold), b, ft.Position);
-				}
-				// Update positions here so they float up smoothly
-				ft.Position.Y += ft.VelocityY;
-				ft.Opacity -= 0.008f;
-				if (ft.Opacity <= 0) _damageNumbers.RemoveAt(i);
-			}
+            // 5. Draw Floating Damage
+            foreach (var dp in _damageNumbers.ToList())
+            {
+                // Draw the text at its static position with no transparency math
+                using (Font damageFont = new Font("Segoe UI", 48, FontStyle.Bold))
+                using (Brush b = new SolidBrush(dp.TextColor))
+                {
+                    g.DrawString(dp.Text, damageFont, b, dp.Position);
+                }
+            }
 
-			// 6. Draw Game Over Overlay 
-			if (_session != null && _session.CurrentPlayerHealth <= 0)
+            // 6. Draw Game Over Overlay 
+            if (_session != null && _session.CurrentPlayerHealth <= 0)
 			{
 				using (Brush overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0)))
 				{
@@ -435,55 +455,33 @@ namespace MathQuizLocker
 		{
 			// Stop all timers to ensure threads exit
 			_countdownTimer?.Stop();
-			_meleeTimer?.Stop();
+		
 			_animationTimer?.Stop();
 			_physicsTimer?.Stop();
+            _playerAnimationTimer?.Stop(); // New
+            _monsterAnimationTimer?.Stop();
 
-			base.OnFormClosing(e);
+            base.OnFormClosing(e);
 		}
 
 		private void BtnSubmit_Click(object? sender, EventArgs e)
         {
-           
-            if (_isAnimating || !int.TryParse(_txtAnswer.Text, out int ans)) return;
-
-            _countdownTimer.Stop();
-            _lblTimer.Visible = false;
-
-          
-            _die1.Visible = false;
-            _die2.Visible = false;
-            _picMultiply.Visible = false;
-            this.Invalidate();
-
-           
+            if (_session.CurrentPlayerHealth <= 0 || _isAnimating || !int.TryParse(_txtAnswer.Text, out int ans))
+                return;
+   
             var result = _session.ProcessAnswer(ans, _a, _b);
 
             if (result.IsCorrect)
-            {
-              
+            {              
                 AnimateMeleeStrike(ans);
             }
-            else
-            {
-               
-                int damage;
-
-             
-                if (_currentMonsterName.ToLower().Contains("boss"))
+            else               
                 {
-                   
-                    damage = 40;
-               
-                }
-                else
-                {
-                
-                    damage = Math.Max(5, (_a * _b) / 2);
-                }
-
+                _secondsRemaining = _session.CurrentMonsterAttackInterval;
+                int damage = _a * _b;
                 AnimateMonsterAttack(damage);
+                GenerateQuestion();
+            }             
             }
         }
     }
-}
