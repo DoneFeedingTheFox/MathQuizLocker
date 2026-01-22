@@ -17,7 +17,7 @@ namespace MathQuizLocker
 
             // Hindre autostart-registrering når du kjører fra Visual Studio (Debug)
 #if !DEBUG
-    SetAutostart(true);
+    Program.SetExternalAutostart(true);
 #endif
 
             SystemEvents.PowerModeChanged += (s, e) =>

@@ -5,13 +5,13 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "Replaced the combat system so that monsters will constantly keep attack you, and you need to finish off questions and kill them before they kill you"
+git commit -m "Trying to fix a build error"
 
 git push origin main
 
 
-git tag v2.0.5
-git push origin v2.0.5
+git tag v2.0.6
+git push origin v2.0.6
 
 
 

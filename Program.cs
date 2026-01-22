@@ -12,7 +12,7 @@ namespace MathQuizLocker
      
         private static Mutex _mutex = new Mutex(true, @"Global\MathQuizLocker-Unique-ID-99");
 
-      
+
         public static void SetExternalAutostart(bool enable)
         {
 #if !DEBUG
