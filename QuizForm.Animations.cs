@@ -51,7 +51,7 @@ namespace MathQuizLocker
                         GenerateQuestion();
                     }
 
-                    this.Invalidate();
+                    this.Invalidate(GetMeleeArea());
                     return;
                 }
                 this.Invalidate(GetMeleeArea());
@@ -82,25 +82,40 @@ namespace MathQuizLocker
 
             void MonsterTickHandler(object? s, EventArgs e)
             {
+                // 1. Safety Guard: Stop if form is closing or disposed
+                if (!this.IsHandleCreated || this.IsDisposed) return;
+
                 step++;
                 int lungeSpeed = isHeavyHit ? 30 : 20;
 
-                if (step <= 5) _picMonster.Left -= lungeSpeed;
-                else if (step <= 12) _picMonster.Left += (int)(lungeSpeed * 0.75);
+                // Movement Logic
+                if (step <= 5)
+                {
+                    _picMonster.Left -= lungeSpeed;
+                }
+                else if (step <= 12)
+                {
+                    _picMonster.Left += (int)(lungeSpeed * 0.75);
+                }
                 else
                 {
+                    // 2. Stop Animation
                     _monsterAnimationTimer.Stop();
                     _monsterAnimationTimer.Tick -= MonsterTickHandler;
+                    _isAnimating = false; // Release the lock so dice can roll
 
-                    _picMonster.Left = originalMonsterX;
+                    // 3. Reset Positions
+                    _picMonster.Location = _monsterOriginalPos;
                     UpdateMonsterSprite("idle");
                     SetKnightIdleSprite();
 
+                    // 4. Handle Death or Resume
                     if (_session.CurrentPlayerHealth <= 0)
                     {
                         _countdownTimer.Stop();
                         _monsterAnimationTimer.Stop();
                         _playerAnimationTimer.Stop();
+                        _damageNumbers.Clear(); // Clean up stuck numbers
                         _lblTimer.Visible = false;
                         _txtAnswer.Visible = false;
                         _btnSubmit.Visible = false;
@@ -109,11 +124,16 @@ namespace MathQuizLocker
                     else
                     {
                         _txtAnswer.Focus();
-                    }
 
-                    this.Invalidate();
-                    return;
+                        // 5. QUEUE CHECK: If a question was waiting, start the dice now
+                        if (_isQuestionPending)
+                        {
+                            GenerateQuestion();
+                        }
+                    }
                 }
+
+                // 6. Targeted Invalidate: Only redraw the monster lane during movement
                 this.Invalidate(GetCombatZone());
             }
 

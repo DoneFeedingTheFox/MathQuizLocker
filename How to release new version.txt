@@ -5,7 +5,7 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "Completed the migration of monster and xp reward to json files"
+git commit -m "Replaced the combat system so that monsters will constantly keep attack you, and you need to finish off questions and kill them before they kill you"
 
 git push origin main
 

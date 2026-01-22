@@ -335,9 +335,17 @@ namespace MathQuizLocker
 					
 			bool isBoss = _currentMonsterName.ToLower().Contains("boss");
 
-			// CRITICAL: Always get the question from the engine.
-			// This ensures _a and _b match the engine's internal '_currentFact'.
-			var q = _quizEngine.GetNextQuestion();
+            if (_isAnimating)
+            {
+                _isQuestionPending = true;
+                return;
+            }
+
+            _isQuestionPending = false;
+
+            // CRITICAL: Always get the question from the engine.
+            // This ensures _a and _b match the engine's internal '_currentFact'.
+            var q = _quizEngine.GetNextQuestion();
 			_a = q.a;
 			_b = q.b;
 

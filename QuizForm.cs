@@ -60,6 +60,7 @@ namespace MathQuizLocker
 		private System.Windows.Forms.Timer _countdownTimer = new();
 		private int _secondsRemaining = 10;
 		private Label _lblTimer;
+        private bool _isQuestionPending = false;
 
         private readonly Random _random = new Random();
 
@@ -120,7 +121,7 @@ namespace MathQuizLocker
             InitStoryUi();
 
             // 3. Initialize & Start Physics Timer for Damage Cleanup
-            _physicsTimer = new System.Windows.Forms.Timer { Interval = 30 }; // ~33 FPS
+            _physicsTimer = new System.Windows.Forms.Timer { Interval = 30 }; 
             _physicsTimer.Tick += (s, e) =>
             {
                 // Only run cleanup if there are numbers to remove
