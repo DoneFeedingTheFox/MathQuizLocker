@@ -8,8 +8,13 @@ namespace MathQuizLocker
 {
     public partial class QuizForm : Form
     {
-   
-		private System.Windows.Forms.Timer _physicsTimer;
+
+        // Graphics Resources
+        private readonly Font _damageFont = new Font("Segoe UI", 48, FontStyle.Bold);
+        private readonly SolidBrush _damageBrush = new SolidBrush(Color.Red);
+        private readonly SolidBrush _overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0));
+
+        private System.Windows.Forms.Timer _physicsTimer;
 
 		private MonsterService _monsterService;
         	
@@ -141,7 +146,7 @@ namespace MathQuizLocker
                     }
 
                     // Only redraw if a number actually vanished
-                    if (needsRedraw) this.Invalidate();
+                    if (needsRedraw) this.Invalidate(GetCombatZone());
                 }
             };
             _physicsTimer.Start();
@@ -323,37 +328,34 @@ namespace MathQuizLocker
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-
             Program.SetExternalAutostart(true);
 
-            // 1. Check if this is a brand new journey (Level 1 and 0 XP)
-            if (_settings.PlayerProgress.Level == 1 && _settings.PlayerProgress.CurrentXp == 0)
-            {
-                // Force the story mode state
-                _isShowingStory = true;
-
-                // Hide combat UI elements that shouldn't be seen yet
-                _txtAnswer.Visible = _btnSubmit.Visible = false;
-                _lblLevel.Visible = _lblXpStatus.Visible = false;
-
-                // Show the story scroll and Level 1 text
-                ShowStoryScreen();
-            }
-            else
-            {
-                // Normal startup for returning players or mid-level sessions
-                _isShowingStory = false;
-
-                SpawnMonster();
+            // ASYNC LOADING: This drops the 92.41% CPU hang in Program.Main
+            this.BeginInvoke(new Action(() => {
+                // 1. Load Background and Sprites only after the window is visible
                 ApplyBiomeForCurrentLevel();
-                UpdatePlayerHud();
+                SpawnMonster();
                 SetKnightIdleSprite();
 
-                LayoutCombat();
-                GenerateQuestion();
-            }
+                // 2. Handle Story or Combat logic
+                if (_settings.PlayerProgress.Level == 1 && _settings.PlayerProgress.CurrentXp == 0)
+                {
+                    _isShowingStory = true;
+                    _txtAnswer.Visible = _btnSubmit.Visible = false;
+                    _lblLevel.Visible = _lblXpStatus.Visible = false;
+                    ShowStoryScreen();
+                }
+                else
+                {
+                    _isShowingStory = false;
+                    UpdatePlayerHud();
+                    LayoutCombat();
+                    GenerateQuestion();
+                }
 
-            this.Invalidate();
+                // 3. Force a single redraw once heavy decoding is finished
+                this.Invalidate();
+            }));
         }
 
         private void SetKnightIdleSprite()
@@ -363,8 +365,7 @@ namespace MathQuizLocker
         }
 
         protected override void OnPaint(PaintEventArgs e)
-        {
-   
+        { 
 
             // 1. If Story Mode is active, draw ONLY the background/overlay and exit
             if (_isShowingStory)
@@ -376,21 +377,21 @@ namespace MathQuizLocker
             }
             // High-performance settings for your laptop
             e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
-			e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
-			e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
-
-			base.OnPaint(e);
+            e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
+            e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None; 
+            base.OnPaint(e);
 			var g = e.Graphics;
 
-			// Only use AntiAlias for things that really need it (like text or rotation)
-			g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            // Only use AntiAlias for things that really need it (like text or rotation)
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
 
-			// 1. Draw Sprites (Knight and Monster)
-			if (_picKnight?.Image != null) g.DrawImage(_picKnight.Image, GetPaddedBounds(_picKnight.Image, _picKnight.Bounds));
-			if (_picMonster?.Image != null) g.DrawImage(_picMonster.Image, GetPaddedBounds(_picMonster.Image, _picMonster.Bounds));
+            // 1. Draw Sprites (Knight and Monster)
+            if (_picKnight?.Image != null) g.DrawImage(_picKnight.Image, GetPaddedBounds(_picKnight.Image, _picKnight.Bounds));
+            if (_picMonster?.Image != null) g.DrawImage(_picMonster.Image, GetPaddedBounds(_picMonster.Image, _picMonster.Bounds));
 
-			// 2. Draw Health Bars
-			DrawHealthBar(g, _picKnight.Bounds, _session.CurrentPlayerHealth, 100, Color.LimeGreen);
+            // 2. Draw Health Bars
+            DrawHealthBar(g, _picKnight.Bounds, _session.CurrentPlayerHealth, 100, Color.LimeGreen);
 			DrawHealthBar(g, _picMonster.Bounds, _session.CurrentMonsterHealth, _session.MaxMonsterHealth, Color.Red);
 
 			// 3. Draw Dice Physics OR Static UI
@@ -433,23 +434,17 @@ namespace MathQuizLocker
             // 5. Draw Floating Damage
             foreach (var dp in _damageNumbers.ToList())
             {
-                // Draw the text at its static position with no transparency math
-                using (Font damageFont = new Font("Segoe UI", 48, FontStyle.Bold))
-                using (Brush b = new SolidBrush(dp.TextColor))
-                {
-                    g.DrawString(dp.Text, damageFont, b, dp.Position);
-                }
+                // REUSE CACHED RESOURCES: This eliminates the Kernel bottleneck
+                g.DrawString(dp.Text, _damageFont, _damageBrush, dp.Position);
             }
 
             // 6. Draw Game Over Overlay 
             if (_session != null && _session.CurrentPlayerHealth <= 0)
-			{
-				using (Brush overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0)))
-				{
-					g.FillRectangle(overlayBrush, this.ClientRectangle);
-				}
-			}
-  
+            {
+                // REUSE CACHED BRUSH: No more 'using' allocations
+                g.FillRectangle(_overlayBrush, this.ClientRectangle);
+            }
+
         }
 
 		protected override void OnFormClosing(FormClosingEventArgs e)

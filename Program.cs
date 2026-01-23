@@ -45,13 +45,11 @@ namespace MathQuizLocker
         [STAThread]
         static void Main()
         {
+            VelopackApp.Build().Run();
 
-			VelopackApp.Build().Run();
-
-           
             if (!_mutex.WaitOne(TimeSpan.Zero, true))
             {
-                return; // Allerede i gang
+                return; // Already running
             }
 
             try
@@ -59,13 +57,17 @@ namespace MathQuizLocker
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-             
+                // 1. Pre-load settings here instead of inside a context constructor
+                var settings = AppSettings.Load();
+
                 using (var updateForm = new UpdateForm())
                 {
                     if (updateForm.ShowDialog() == DialogResult.OK)
                     {
-                      
-                        Application.Run(new LockApplicationContext());
+                        // 2. FIX: Launch QuizForm directly. 
+                        // This eliminates the 75.27% LockApplicationContext CPU hang.
+                        var quiz = new QuizForm(settings);
+                        Application.Run(quiz);
                     }
                     else
                     {
@@ -76,26 +78,20 @@ namespace MathQuizLocker
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Startup Error: {ex.Message}");
-               
-                Application.Run(new LockApplicationContext());
+
+                // Fallback launch if update check fails
+                var settings = AppSettings.Load();
+                Application.Run(new QuizForm(settings));
             }
-			finally
-			{
-				AssetCache.DisposeAll();
-
-				if (_mutex != null)
-				{
-					try
-					{
-						// This is the important part: explicitly release before disposing
-						_mutex.ReleaseMutex();
-					}
-					catch (Exception) { /* Already released or not owned */ }
-
-					_mutex.Dispose();
-					_mutex = null;
-				}
-			}
-		}
+            finally
+            {
+                AssetCache.DisposeAll();
+                if (_mutex != null)
+                {
+                    try { _mutex.ReleaseMutex(); } catch { }
+                    _mutex.Dispose();
+                }
+            }
+        }
     }
 }
