@@ -330,14 +330,14 @@ namespace MathQuizLocker
             base.OnShown(e);
             Program.SetExternalAutostart(true);
 
-            // ASYNC LOADING: This drops the 92.41% CPU hang in Program.Main
+            // This moves the 92.41% CPU hang out of the startup sequence
             this.BeginInvoke(new Action(() => {
-                // 1. Load Background and Sprites only after the window is visible
+                // Load heavy high-res art only after the window is visible
                 ApplyBiomeForCurrentLevel();
                 SpawnMonster();
                 SetKnightIdleSprite();
 
-                // 2. Handle Story or Combat logic
+                // Handle initial story or game logic
                 if (_settings.PlayerProgress.Level == 1 && _settings.PlayerProgress.CurrentXp == 0)
                 {
                     _isShowingStory = true;
@@ -353,7 +353,7 @@ namespace MathQuizLocker
                     GenerateQuestion();
                 }
 
-                // 3. Force a single redraw once heavy decoding is finished
+                // Force a final redraw once decoding is finished
                 this.Invalidate();
             }));
         }
@@ -365,31 +365,24 @@ namespace MathQuizLocker
         }
 
         protected override void OnPaint(PaintEventArgs e)
-        { 
-
-            // 1. If Story Mode is active, draw ONLY the background/overlay and exit
+        {
             if (_isShowingStory)
             {
-                // Let the base class draw the Background (your scroll)
                 base.OnPaint(e);
-    
                 return;
             }
-            // High-performance settings for your laptop
+
+            // Vital settings for 1920x1280 rendering on integrated graphics
             e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
             e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
             e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None; 
+
             base.OnPaint(e);
-			var g = e.Graphics;
+            var g = e.Graphics;
 
-            // Only use AntiAlias for things that really need it (like text or rotation)
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
-
-            // 1. Draw Sprites (Knight and Monster)
-            if (_picKnight?.Image != null) g.DrawImage(_picKnight.Image, GetPaddedBounds(_picKnight.Image, _picKnight.Bounds));
-            if (_picMonster?.Image != null) g.DrawImage(_picMonster.Image, GetPaddedBounds(_picMonster.Image, _picMonster.Bounds));
-
+            // Use pre-calculated Bounds instead of GetPaddedBounds to save CPU per frame
+            if (_picKnight?.Image != null) g.DrawImage(_picKnight.Image, _picKnight.Bounds);
+            if (_picMonster?.Image != null) g.DrawImage(_picMonster.Image, _picMonster.Bounds);
             // 2. Draw Health Bars
             DrawHealthBar(g, _picKnight.Bounds, _session.CurrentPlayerHealth, 100, Color.LimeGreen);
 			DrawHealthBar(g, _picMonster.Bounds, _session.CurrentMonsterHealth, _session.MaxMonsterHealth, Color.Red);
