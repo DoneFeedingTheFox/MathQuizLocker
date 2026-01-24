@@ -17,7 +17,11 @@ namespace MathQuizLocker
         private System.Windows.Forms.Timer _physicsTimer;
 
 		private MonsterService _monsterService;
-        	
+
+		// UI Elements
+		private Rectangle _knightRenderRect;
+		private Rectangle _monsterRenderRect;
+
 		// Core Services
 		private readonly AppSettings _settings;
         private readonly QuizEngine _quizEngine;
@@ -330,9 +334,9 @@ namespace MathQuizLocker
             base.OnShown(e);
             Program.SetExternalAutostart(true);
 
-            // This moves the 92.41% CPU hang out of the startup sequence
+           
             this.BeginInvoke(new Action(() => {
-                // Load heavy high-res art only after the window is visible
+              
                 ApplyBiomeForCurrentLevel();
                 SpawnMonster();
                 SetKnightIdleSprite();
@@ -351,9 +355,7 @@ namespace MathQuizLocker
                     UpdatePlayerHud();
                     LayoutCombat();
                     GenerateQuestion();
-                }
-
-                // Force a final redraw once decoding is finished
+                }            
                 this.Invalidate();
             }));
         }
@@ -364,54 +366,50 @@ namespace MathQuizLocker
             _picKnight.Image = AssetCache.GetImageClone(path);
         }
 
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            if (_isShowingStory)
-            {
-                base.OnPaint(e);
-                return;
-            }
+		protected override void OnPaint(PaintEventArgs e)
+		{
+			if (_isShowingStory)
+			{
+				base.OnPaint(e);
+				return;
+			}
 
-            // Vital settings for 1920x1280 rendering on integrated graphics
-            e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
-            e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
-            e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+			// High-performance settings for 1920x1280 backgrounds on your laptop
+			e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
+			e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
+			e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+			e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
 
-            base.OnPaint(e);
-            var g = e.Graphics;
+			base.OnPaint(e);
+			var g = e.Graphics;
 
-            // Use pre-calculated Bounds instead of GetPaddedBounds to save CPU per frame
-            if (_picKnight?.Image != null) g.DrawImage(_picKnight.Image, _picKnight.Bounds);
-            if (_picMonster?.Image != null) g.DrawImage(_picMonster.Image, _picMonster.Bounds);
-            // 2. Draw Health Bars
-            DrawHealthBar(g, _picKnight.Bounds, _session.CurrentPlayerHealth, 100, Color.LimeGreen);
+			// 1. Draw Sprites (Knight and Monster)
+			// FIX: Use GetPaddedBounds to stop the knight from looking "narrow" or "squeezed"
+			if (_picKnight?.Image != null) g.DrawImage(_picKnight.Image, _knightRenderRect);
+			if (_picMonster?.Image != null) g.DrawImage(_picMonster.Image, _monsterRenderRect);
+
+			// 2. Draw Health Bars
+			DrawHealthBar(g, _picKnight.Bounds, _session.CurrentPlayerHealth, 100, Color.LimeGreen);
 			DrawHealthBar(g, _picMonster.Bounds, _session.CurrentMonsterHealth, _session.MaxMonsterHealth, Color.Red);
 
 			// 3. Draw Dice Physics OR Static UI
-			// We use the specific flag _isDicePhysicsActive so they don't show up during melee attacks
 			if (_isDicePhysicsActive)
 			{
-				// Use 120f to match your LayoutCombat exactly
 				float diceSize = 120f * (this.ClientSize.Height / 1080f);
-
 				for (int i = 0; i < 3; i++)
 				{
 					Image? img = (i == 0) ? _die1.Image : (i == 1) ? _die2.Image : _picMultiply.Image;
 					if (img == null) continue;
 
 					var state = g.Save();
-					// Center the rotation on the die
 					g.TranslateTransform(_diceCurrentPositions[i].X + diceSize / 2, _diceCurrentPositions[i].Y + diceSize / 2);
 					g.RotateTransform(_diceRotationAngles[i]);
-
-					// Draw all 3 at the same size
 					g.DrawImage(img, -diceSize / 2, -diceSize / 2, diceSize, diceSize);
 					g.Restore(state);
 				}
 			}
 			else if (_die1?.Visible == true)
 			{
-				// Draw the static version once they have landed
 				if (_die1.Image != null) g.DrawImage(_die1.Image, _die1.Bounds);
 				if (_die2.Image != null) g.DrawImage(_die2.Image, _die2.Bounds);
 				if (_picMultiply?.Image != null) g.DrawImage(_picMultiply.Image, _picMultiply.Bounds);
@@ -424,21 +422,18 @@ namespace MathQuizLocker
 			if (_picLoot?.Visible == true && _picLoot.Image != null)
 				g.DrawImage(_picLoot.Image, _picLoot.Bounds);
 
-            // 5. Draw Floating Damage
-            foreach (var dp in _damageNumbers.ToList())
-            {
-                // REUSE CACHED RESOURCES: This eliminates the Kernel bottleneck
-                g.DrawString(dp.Text, _damageFont, _damageBrush, dp.Position);
-            }
+			// 5. Draw Floating Damage (Using cached resources to avoid 99.5% Kernel bottleneck)
+			foreach (var dp in _damageNumbers.ToList())
+			{
+				g.DrawString(dp.Text, _damageFont, _damageBrush, dp.Position);
+			}
 
-            // 6. Draw Game Over Overlay 
-            if (_session != null && _session.CurrentPlayerHealth <= 0)
-            {
-                // REUSE CACHED BRUSH: No more 'using' allocations
-                g.FillRectangle(_overlayBrush, this.ClientRectangle);
-            }
-
-        }
+			// 6. Draw Game Over Overlay 
+			if (_session != null && _session.CurrentPlayerHealth <= 0)
+			{
+				g.FillRectangle(_overlayBrush, this.ClientRectangle);
+			}
+		}
 
 		protected override void OnFormClosing(FormClosingEventArgs e)
 		{

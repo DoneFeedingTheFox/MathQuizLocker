@@ -187,24 +187,35 @@ namespace MathQuizLocker
         }
 
 
-		private Rectangle GetPaddedBounds(Image img, Rectangle target)
-        {
-            if (img == null) return target;
+		private Rectangle GetPaddedBounds(Image img, Rectangle targetRect)
+		{
+		
+			float imgRatio = (float)img.Width / img.Height;
+			float targetRatio = (float)targetRect.Width / targetRect.Height;
 
-            float ratio = Math.Min((float)target.Width / img.Width, (float)target.Height / img.Height);
-            int newWidth = (int)(img.Width * ratio);
-            int newHeight = (int)(img.Height * ratio);
+			int drawWidth, drawHeight;
+			int xOffset = 0;
 
-            int x = target.X + (target.Width - newWidth) / 2;
-            int y = target.Y + (target.Height - newHeight) / 2;
+			if (imgRatio > targetRatio)
+			{
+				drawWidth = targetRect.Width;
+				drawHeight = (int)(targetRect.Width / imgRatio);
+			}
+			else
+			{
+				drawHeight = targetRect.Height;
+				drawWidth = (int)(targetRect.Height * imgRatio);
+				xOffset = (targetRect.Width - drawWidth) / 2; // Center horizontally
+			}
 
-            return new Rectangle(x, y, newWidth, newHeight);
-        }
-       
+			
+			return new Rectangle(targetRect.X + xOffset, targetRect.Bottom - drawHeight, drawWidth, drawHeight);
+		}
 
-        
 
-        private void UpdatePlayerHud()
+
+
+		private void UpdatePlayerHud()
         {
        
             if (_lblLevel == null || _lblXpStatus == null || _settings?.PlayerProgress == null)

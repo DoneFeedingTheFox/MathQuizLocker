@@ -133,8 +133,7 @@ namespace MathQuizLocker
 				else
 				{
 				
-					SpawnMonster();
-                 
+					SpawnMonster();               
 
                     _btnContinue.Visible = _btnExit.Visible = _picChest.Visible = _picLoot.Visible = false;
 					_txtAnswer.Visible = _btnSubmit.Visible = true;
@@ -305,61 +304,64 @@ namespace MathQuizLocker
             this.Invalidate();
         }
 
-        public void LayoutCombat()
-        {
-            if (this.ClientSize.Width == 0 || this.ClientSize.Height == 0) return;
-            float scale = this.ClientSize.Height / 1080f;
-            int w = this.ClientSize.Width;
-            int h = this.ClientSize.Height;
+		public void LayoutCombat()
+		{
+			if (this.ClientSize.Width == 0 || this.ClientSize.Height == 0) return;
+			float scale = this.ClientSize.Height / 1080f;
+			int w = this.ClientSize.Width;
+			int h = this.ClientSize.Height;
 
-            // Sprite Positioning
-            _picKnight.Size = new Size((int)(350 * scale), (int)(450 * scale));
-            _picKnight.Location = new Point((int)(w * 0.20), (int)(h * 0.85 - _picKnight.Height));
+			// 1. Character Positioning and size
+			int knightSize = (int)(450 * scale);
+			_picKnight.Size = new Size(knightSize, knightSize);
+			_picKnight.Location = new Point((int)(w * 0.20), (int)(h * 0.85 - _picKnight.Height));
 
-            _picMonster.Size = new Size((int)(450 * scale), (int)(550 * scale));
-            _picMonster.Location = new Point((int)(w * 0.65), (int)(h * 0.90 - _picMonster.Height));
-            _monsterOriginalPos = _picMonster.Location; // Capture the "Idle" spot
+			int monsterSize = (int)(450 * scale); 
+			_picMonster.Size = new Size(monsterSize, monsterSize);
+			_picMonster.Location = new Point((int)(w * 0.65), (int)(h * 0.90 - _picMonster.Height));
+			_monsterOriginalPos = _picMonster.Location;
 
-            // Timer Positioning
-            _lblTimer.Location = new Point(w / 2 - _lblTimer.Width / 2, _picMultiply.Bottom + 20);
+			// 2. Pre-calculate the Render Rects once
+			// This fixes the health bar height by finding the actual character feet/head 
+			if (_picKnight.Image != null)
+				_knightRenderRect = GetPaddedBounds(_picKnight.Image, _picKnight.Bounds);
 
-			// Dice & Math Sign Positioning (Final Landing Spots)
+			if (_picMonster.Image != null)
+				_monsterRenderRect = GetPaddedBounds(_picMonster.Image, _picMonster.Bounds);
+
+			// 3. Timer & UI Positioning
+			_lblTimer.Location = new Point(w / 2 - _lblTimer.Width / 2, (int)(h * 0.15) + (int)(140 * scale));
+
+			// Dice & Math Sign Positioning
 			int diceSize = (int)(120 * scale);
+			_picMultiply.Size = new Size(diceSize, diceSize);
+			_picMultiply.Location = new Point(w / 2 - _picMultiply.Width / 2, (int)(h * 0.15));
 
-            _picMultiply.Size = new Size(diceSize, diceSize);
-            _picMultiply.Location = new Point(w / 2 - _picMultiply.Width / 2, (int)(h * 0.15));
+			_die1.Size = new Size(diceSize, diceSize);
+			_die1.Location = new Point(_picMultiply.Left - _die1.Width - 40, _picMultiply.Top);
 
-            _die1.Size = new Size(diceSize, diceSize);
-            _die1.Location = new Point(_picMultiply.Left - _die1.Width - 40, _picMultiply.Top);
+			_die2.Size = new Size(diceSize, diceSize);
+			_die2.Location = new Point(_picMultiply.Right + 40, _picMultiply.Top);
 
-            _die2.Size = new Size(diceSize, diceSize);
-            _die2.Location = new Point(_picMultiply.Right + 40, _picMultiply.Top);
+			// Loot Positioning
+			_picChest.Size = new Size((int)(250 * scale), (int)(200 * scale));
+			_picChest.Location = new Point(_picMonster.Left, _picMonster.Bottom - _picChest.Height);
 
-            // Loot Positioning
-            _picChest.Size = new Size((int)(250 * scale), (int)(200 * scale));
-            _picChest.Location = new Point(_picMonster.Left, _picMonster.Bottom - _picChest.Height);
-            _picLoot.Size = new Size((int)(80 * scale), (int)(80 * scale));
-            _picLoot.Location = new Point(_picChest.Right - (int)(40 * scale), _picChest.Bottom - (int)(100 * scale));
+			// Input UI Positioning
+			_txtAnswer.Size = new Size((int)(220 * scale), (int)(80 * scale));
+			_txtAnswer.Location = new Point(w / 2 - _txtAnswer.Width / 2, h - (int)(250 * scale));
 
-            // Input UI Positioning
-            _txtAnswer.Size = new Size((int)(220 * scale), (int)(80 * scale));
-            _txtAnswer.Location = new Point(w / 2 - _txtAnswer.Width / 2, h - (int)(250 * scale));
+			_btnSubmit.Size = new Size((int)(180 * scale), (int)(60 * scale));
+			_btnSubmit.Location = new Point(w / 2 - _btnSubmit.Width / 2, _txtAnswer.Bottom + 10);
 
-            _btnSubmit.Size = new Size((int)(180 * scale), (int)(60 * scale));
-            _btnSubmit.Location = new Point(w / 2 - _btnSubmit.Width / 2, _txtAnswer.Bottom + 10);
+			// Victory Buttons
+			_btnContinue.Size = new Size((int)(250 * scale), (int)(70 * scale));
+			_btnContinue.Location = new Point(w / 2 - _btnContinue.Width / 2, h / 2);
 
-            // HUD Positioning
-            _lblLevel.Location = new Point((int)(50 * scale), (int)(50 * scale));
-            _lblXpStatus.Location = new Point(_lblLevel.Left, _lblLevel.Bottom + (int)(10 * scale));
+			_btnExit.Size = new Size((int)(250 * scale), (int)(50 * scale));
+			_btnExit.Location = new Point(w / 2 - _btnExit.Width / 2, _btnContinue.Bottom + 20);
 
-            // Victory Buttons Positioning (Stacked in the center)
-            _btnContinue.Size = new Size((int)(250 * scale), (int)(70 * scale));
-            _btnContinue.Location = new Point(w / 2 - _btnContinue.Width / 2, h / 2);
-
-            _btnExit.Size = new Size((int)(250 * scale), (int)(50 * scale));
-            _btnExit.Location = new Point(w / 2 - _btnExit.Width / 2, _btnContinue.Bottom + 20);
-
-            this.Invalidate();
-        }
-    }
+			this.Invalidate();
+		}
+	}
 }

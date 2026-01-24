@@ -9,62 +9,82 @@ namespace MathQuizLocker
 
         private void AnimateMeleeStrike(int damage)
         {
-            _knightOriginalPos = _picKnight.Location;
+			// 1. Initial Logic
+			bool isDefeated = _session.ApplyDamage(damage, out int xpGained, out bool leveledUp);
+			UpdatePlayerHud();
+			ShowDamage(damage, _picMonster.Location, Color.Red);
 
-            bool isDefeated = _session.ApplyDamage(damage, out int xpGained, out bool leveledUp);
-            UpdatePlayerHud();
-            ShowDamage(damage, _picMonster.Location, Color.Red);
+			// 2. Prepare the Sprite and the RENDER RECTANGLE
+			_picKnight.Image = AssetCache.GetImageClone(AssetPaths.KnightAttack(_equippedKnightStage));
 
-            _picKnight.Image = AssetCache.GetImageClone(AssetPaths.KnightAttack(_equippedKnightStage));
+			// Crucial: Update the rectangle to match the new Attack sprite dimensions
+			_knightRenderRect = GetPaddedBounds(_picKnight.Image, _picKnight.Bounds);
+			int originalX = _knightRenderRect.X;
 
-            int distance = _monsterOriginalPos.X - _picKnight.Right;
-            int step = 0;
+			int distance = _monsterOriginalPos.X - _picKnight.Right;
+			int step = 0;
 
-            // 1. Reset the timer
-            _playerAnimationTimer.Stop();
-            _playerAnimationTimer.Tick -= MeleeTickHandler;
+			_playerAnimationTimer.Stop();
+			_playerAnimationTimer.Tick -= MeleeTickHandler;
 
-            void MeleeTickHandler(object? s, EventArgs e)
-            {
-                if (!this.IsHandleCreated || this.IsDisposed) return;
-                step++;
-                if (step <= 4) _picKnight.Left += (distance / 4);
-                else if (step == 5) UpdateMonsterSprite("hit");
-                else if (step <= 12) _picKnight.Left -= (distance / 8);
-                else
-                {
-                    _playerAnimationTimer.Stop();
-                    _playerAnimationTimer.Tick -= MeleeTickHandler;
+			void MeleeTickHandler(object? s, EventArgs e)
+			{
+				if (!this.IsHandleCreated || this.IsDisposed) return;
+				step++;
 
-                    _picKnight.Location = _knightOriginalPos;
-                    SetKnightIdleSprite();
-                    UpdateMonsterSprite("idle");
+				
+				if (step <= 4)
+				{
+					_knightRenderRect.X += (distance / 4);
+				}
+				else if (step == 5)
+				{
+					UpdateMonsterSprite("hit");
+				}
+				else if (step <= 12)
+				{
+					_knightRenderRect.X -= (distance / 8);
+				}
+				else
+				{
+					_playerAnimationTimer.Stop();
+					_playerAnimationTimer.Tick -= MeleeTickHandler;
 
-                    if (_session.CurrentMonsterHealth <= 0)
-                    {
-                        _countdownTimer.Stop();
-                        _lblTimer.Visible = false;
-                        ShowVictoryScreen();
-                    }
-                    else
-                    {
-                        GenerateQuestion();
-                    }
+					// Reset Sprite and Rectangle to Idle state
+					SetKnightIdleSprite();
+					_knightRenderRect = GetPaddedBounds(_picKnight.Image, _picKnight.Bounds);
 
-                    this.Invalidate(GetMeleeArea());
-                    return;
-                }
-                this.Invalidate(GetMeleeArea());
-            }
+					UpdateMonsterSprite("idle");
 
-            // 2. CRITICAL: Attach and START
-            _playerAnimationTimer.Tick += MeleeTickHandler;
-            _playerAnimationTimer.Start();
-        }
+					if (_session.CurrentMonsterHealth <= 0)
+					{
+						_countdownTimer.Stop();
+						_lblTimer.Visible = false;
+						ShowVictoryScreen();
+					}
+					else GenerateQuestion();
 
-        private void AnimateMonsterAttack(int damage)
+					this.Invalidate(GetCombatZone());
+					return;
+				}
+
+				// Redraw only the combat area to save CPU cycles
+				this.Invalidate(GetCombatZone());
+			}
+
+			_playerAnimationTimer.Tick += MeleeTickHandler;
+			_playerAnimationTimer.Start();
+		}
+
+		private void AnimateMonsterAttack(int damage)
         {
-            if (!this.IsHandleCreated || this.IsDisposed) return;
+
+			if (_playerAnimationTimer.Enabled)
+			{
+				_isQuestionPending = true; // Use your existing flag to queue the event
+				return;
+			}
+			if (!this.IsHandleCreated || this.IsDisposed) return;
             UpdateMonsterSprite("attack");
             bool isHeavyHit = damage >= 40;
 
@@ -88,29 +108,29 @@ namespace MathQuizLocker
                 step++;
                 int lungeSpeed = isHeavyHit ? 30 : 20;
 
-                // Movement Logic
-                if (step <= 5)
-                {
-                    _picMonster.Left -= lungeSpeed;
-                }
-                else if (step <= 12)
-                {
-                    _picMonster.Left += (int)(lungeSpeed * 0.75);
-                }
-                else
-                {
-                    // 2. Stop Animation
-                    _monsterAnimationTimer.Stop();
-                    _monsterAnimationTimer.Tick -= MonsterTickHandler;
-                    _isAnimating = false; // Release the lock so dice can roll
+				// Movement Logic
+				if (step <= 5)
+				{
+					_monsterRenderRect.X -= lungeSpeed;
+				}
+				else if (step <= 12)
+				{
+					_monsterRenderRect.X += (int)(lungeSpeed * 0.75);
+				}
+				else
+				{
+					_monsterAnimationTimer.Stop();
+					_monsterAnimationTimer.Tick -= MonsterTickHandler;
+					_isAnimating = false;
 
-                    // 3. Reset Positions
-                    _picMonster.Location = _monsterOriginalPos;
-                    UpdateMonsterSprite("idle");
-                    SetKnightIdleSprite();
+					// Reset the render rect to its original "Idle" position
+					_monsterRenderRect = GetPaddedBounds(_picMonster.Image, _picMonster.Bounds);
 
-                    // 4. Handle Death or Resume
-                    if (_session.CurrentPlayerHealth <= 0)
+					UpdateMonsterSprite("idle");
+					SetKnightIdleSprite();
+
+					// 4. Handle Death or Resume
+					if (_session.CurrentPlayerHealth <= 0)
                     {
                         _countdownTimer.Stop();
                         _monsterAnimationTimer.Stop();
