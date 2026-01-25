@@ -47,7 +47,7 @@ namespace MathQuizLocker
 
 		private bool UpdateMeleeStrike(ref Rectangle dirty)
 		{
-			Rectangle oldK = Rectangle.Round(_knightDrawRect);
+			Rectangle oldK = GetSpriteAndShadowBounds(_knightDrawRect);
 
 			_meleeStep++;
 
@@ -89,7 +89,7 @@ namespace MathQuizLocker
 				return true;
 			}
 
-			Rectangle newK = Rectangle.Round(_knightDrawRect);
+			Rectangle newK = GetSpriteAndShadowBounds(_knightDrawRect);
 			dirty = dirty.IsEmpty ? Rectangle.Union(oldK, newK) : Rectangle.Union(dirty, Rectangle.Union(oldK, newK));
 			return true;
 		}

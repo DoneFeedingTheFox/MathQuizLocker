@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 using MathQuizLocker.Services;
+using System.Drawing.Drawing2D;
 
 namespace MathQuizLocker
 {
@@ -373,6 +375,19 @@ namespace MathQuizLocker
 			RecalcKnightDrawRect();
 		}
 
+		private Rectangle GetSpriteAndShadowBounds(RectangleF spriteDrawRect)
+		{
+			var s = Rectangle.Round(spriteDrawRect);
+			var sh = Rectangle.Round(GetShadowRect(spriteDrawRect));
+
+			var u = Rectangle.Union(s, sh);
+			u.Inflate(4, 4); // small safety margin for gradient edges
+			return u;
+		}
+
+
+
+
 		protected override void OnPaint(PaintEventArgs e)
 		{
 			if (_isShowingStory)
@@ -390,9 +405,13 @@ namespace MathQuizLocker
 
 			var g = e.Graphics;
 
-			// 1. Sprites
+			// Shadows first (behind sprites)
+			DrawGroundShadow(g, _knightDrawRect);
+			DrawGroundShadow(g, _monsterDrawRect);
+
 			if (_knightImg != null) g.DrawImage(_knightImg, _knightDrawRect);
 			if (_monsterImg != null) g.DrawImage(_monsterImg, _monsterDrawRect);
+
 
 			// 2. Health bars
 			DrawHealthBar(g, Rectangle.Round(_knightRect), _session.CurrentPlayerHealth, 100, Color.LimeGreen);
@@ -481,6 +500,39 @@ namespace MathQuizLocker
 		{
 			if (_monsterImg == null) { _monsterDrawRect = _monsterRect; return; }
 			_monsterDrawRect = GetPaddedBounds(_monsterImg, Rectangle.Round(_monsterRect));
+		}
+		private RectangleF GetShadowRect(RectangleF spriteDrawRect)
+		{
+			// Bigger and slightly taller than before
+			float shadowWidth = spriteDrawRect.Width * 0.78f;
+			float shadowHeight = spriteDrawRect.Height * 0.16f;
+
+			float x = spriteDrawRect.X + (spriteDrawRect.Width - shadowWidth) / 2f;
+
+			// Sit it a touch lower so it "grounds" without looking like a sticker
+			float y = spriteDrawRect.Bottom - shadowHeight * 0.35f;
+
+			return new RectangleF(x, y, shadowWidth, shadowHeight);
+		}
+
+		private void DrawGroundShadow(Graphics g, RectangleF spriteDrawRect)
+		{
+			var shadowRect = GetShadowRect(spriteDrawRect);
+
+			using var path = new GraphicsPath();
+			path.AddEllipse(shadowRect);
+
+			using var pgb = new PathGradientBrush(path)
+			{
+				// Lighter than before
+				CenterColor = Color.FromArgb(120, 0, 0, 0),
+				SurroundColors = new[] { Color.FromArgb(0, 0, 0, 0) }
+			};
+
+			// Softer fade (bigger focus values = less “hard core”)
+			pgb.FocusScales = new PointF(0.45f, 0.65f);
+
+			g.FillPath(pgb, path);
 		}
 	}
 }
