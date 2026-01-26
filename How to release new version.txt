@@ -5,7 +5,7 @@ git reset --hard origin/main
 
 
 git add .
-git commit -m "sync"
+git commit -m "First iteration transition"
 
 git push origin main
 
