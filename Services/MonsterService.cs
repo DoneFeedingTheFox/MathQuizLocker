@@ -75,7 +75,5 @@ namespace MathQuizLocker.Services
 			var monster = _monsters.FirstOrDefault(m => m.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 			return monster ?? (_monsters.Count > 0 ? _monsters[0] : new MonsterConfig { Name = "Unknown", MaxHealth = 10 });
 		}
-
-		public List<MonsterConfig> GetAllMonsters() => _monsters;
 	}
 }

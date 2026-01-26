@@ -47,14 +47,6 @@ namespace MathQuizLocker
             return lazy.Value;
         }
 
-        /// <summary>Loads the given asset paths into the cache so later GetImageClone/GetMasterBitmap are fast.</summary>
-        public static void Preload(params string[] paths)
-        {
-            if (paths == null) return;
-            foreach (var p in paths)
-                _ = GetMasterBitmap(p);
-        }
-
         /// <summary>
         /// Dispose all cached master bitmaps (call once on app shutdown).
         /// </summary>

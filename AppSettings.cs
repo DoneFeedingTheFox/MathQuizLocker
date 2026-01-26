@@ -7,9 +7,6 @@ namespace MathQuizLocker
     public class AppSettings
     {
         // --- Core Settings ---
-        public bool LockOnWakeFromSleep { get; set; } = true;
-        public bool ShowQuizOnStartup { get; set; } = true;
-        public int RequiredCorrectAnswers { get; set; } = 10;
         /// <summary>Highest multiplication row unlocked (e.g. 2 = 1× and 2× table).</summary>
         public int MaxFactorUnlocked { get; set; } = 2;
 

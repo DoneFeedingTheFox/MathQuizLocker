@@ -8,8 +8,6 @@ namespace MathQuizLocker.Services
     public class QuizResult
     {
         public bool IsCorrect { get; set; }
-        public int XPFirstGained { get; set; }
-        public bool LeveledUp { get; set; }
         public string Message { get; set; } = "";
         public Color MessageColor { get; set; }
     }
@@ -34,10 +32,8 @@ namespace MathQuizLocker.Services
 
 		// Public Properties for the UI to read
 		public int CurrentPlayerHealth => _playerHealth;
-        public int CurrentMonsterHealth => _monsterHealth;
+		public int CurrentMonsterHealth => _monsterHealth;
         public int MaxMonsterHealth => _maxMonsterHealth;
-        public int TotalKills { get; private set; } // Track kills for Game Over screen
-        public bool XpBoostActive { get; set; }
 
         private int _currentMonsterAttackDamage;
         public int CurrentMonsterAttackInterval { get; private set; }
@@ -86,7 +82,6 @@ namespace MathQuizLocker.Services
 				// Use your XpSystem to update progress
 				XpSystem.AddXp(_progress, _currentMonsterXpReward);
 
-				TotalKills++;
 				AppSettings.Save(_settings); // Save progress immediately on kill
 				return true; // Monster defeated
 			}

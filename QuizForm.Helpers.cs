@@ -162,18 +162,6 @@ namespace MathQuizLocker
 			}
 		}
 
-
-		public Question GenerateRandomQuestion(int playerLevel)
-		{
-			int maxA = Math.Min(12, playerLevel + 1);
-			int maxB = 10;
-
-			int a = _rng.Next(1, maxA + 1);
-			int b = _rng.Next(1, maxB + 1);
-
-			return new Question(a, b);
-		}
-
 		/// <summary>Clears input, gets next question from engine, updates dice images and starts dice roll animation.</summary>
 		private void GenerateQuestion()
 		{
