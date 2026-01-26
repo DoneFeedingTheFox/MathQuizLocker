@@ -177,15 +177,11 @@ namespace MathQuizLocker
 				}
 				else
 				{
-					SpawnMonster();
+					// Hide continue button before transition starts
 					_btnContinue.Visible = _btnExit.Visible = false;
-					_txtAnswer.Visible = _btnSubmit.Visible = true;
-
-					_diceVisible = true;
-
-					GenerateQuestion();
-					LayoutCombat();
-					this.Invalidate();
+					
+					// Start transition animation
+					StartTransition();
 				}
 			};
 

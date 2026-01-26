@@ -37,6 +37,9 @@ namespace MathQuizLocker
 				_ => "castle_01"
 			};
 
+			// Extract biome name for transition lookup (remove _01 suffix)
+			_currentBiome = biomeBase.Replace("_01", "");
+
 			// Boss suffix (matches *_boss.png exactly)
 			bool isBoss =
 				!string.IsNullOrEmpty(_currentMonsterName) &&
@@ -97,6 +100,100 @@ namespace MathQuizLocker
 			return _settings.PlayerProgress.CurrentXp >= requiredXp;
 		}
 
+		/// <summary>Starts a horizontal scroll transition to the next fight scene.</summary>
+		private void StartTransition()
+		{
+			// Clear UI elements (knight, monster, dice, combat UI)
+			_knightImg?.Dispose();
+			_knightImg = null;
+			_monsterImg?.Dispose();
+			_monsterImg = null;
+			_die1Img?.Dispose();
+			_die1Img = null;
+			_die2Img?.Dispose();
+			_die2Img = null;
+			_mulImg?.Dispose();
+			_mulImg = null;
+			_diceVisible = false;
+			_txtAnswer.Visible = false;
+			_btnSubmit.Visible = false;
+			_lblTimer.Visible = false;
+			_countdownTimer.Stop();
+
+			// Determine next biome
+			int level = _settings.PlayerProgress.Level;
+			string nextBiomeBase = level switch
+			{
+				1 => "meadow",
+				2 => "swamp",
+				3 => "forest",
+				4 => "cave",
+				_ => "castle"
+			};
+
+			// Pre-load next background
+			bool isBoss = CheckIfBossShouldSpawn();
+			string nextBiomeFile = level switch
+			{
+				1 => isBoss ? "meadow_01_boss.png" : "meadow_01.png",
+				2 => isBoss ? "swamp_01_boss.png" : "swamp_01.png",
+				3 => isBoss ? "forest_01_boss.png" : "forest_01.png",
+				4 => isBoss ? "cave_01_boss.png" : "cave_01.png",
+				_ => isBoss ? "castle_01_boss.png" : "castle_01.png"
+			};
+
+			string nextBgPath = AssetPaths.Background(nextBiomeFile);
+			ReplaceImage(ref _nextBackgroundImage, AssetCache.GetImageClone(nextBgPath));
+
+			// Pre-load next monster
+			var nextMonsterConfig = _monsterService.GetMonsterByLevel(level, isBoss);
+			string nextMonsterName = nextMonsterConfig.Name;
+			var nextConfig = _monsterService.GetMonster(nextMonsterName);
+			string nextMonsterSpritePath = nextConfig.SpritePath;
+			if (nextMonsterSpritePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+				nextMonsterSpritePath = nextMonsterSpritePath.Substring(0, nextMonsterSpritePath.Length - 4);
+			string nextMonsterFullPath = nextMonsterSpritePath + ".png";
+			ReplaceImage(ref _nextMonsterImg, AssetCache.GetImageClone(nextMonsterFullPath));
+
+			// Calculate next monster position
+			float scale = this.ClientSize.Height / 1080f;
+			float monsterSize = 450f * scale;
+			_nextMonsterRect = new RectangleF(
+				this.ClientSize.Width * 0.65f,
+				(this.ClientSize.Height * 0.90f) - monsterSize,
+				monsterSize,
+				monsterSize);
+
+			// Look up and pre-load transition graphic
+			string? transitionGraphicPath = _transitionGraphicService.GetTransitionGraphic(_currentBiome, nextBiomeBase);
+			if (!string.IsNullOrEmpty(transitionGraphicPath) && File.Exists(transitionGraphicPath))
+			{
+				ReplaceImage(ref _nextTransitionGraphicImg, AssetCache.GetImageClone(transitionGraphicPath));
+			}
+
+			// Initialize transition state
+			_isTransitioning = true;
+			_transitionOffsetX = 0f;
+			_transitionStartTime = 0f;
+
+			// Position transition graphic on right side (half visible)
+			if (_transitionGraphicImg != null)
+			{
+				// Scale to full screen height while preserving aspect ratio
+				float targetHeight = this.ClientSize.Height;
+				float aspectRatio = (float)_transitionGraphicImg.Width / _transitionGraphicImg.Height;
+				float graphicWidth = targetHeight * aspectRatio;
+				float graphicHeight = targetHeight;
+				_transitionGraphicRect = new RectangleF(
+					this.ClientSize.Width - graphicWidth / 2f,
+					0,
+					graphicWidth,
+					graphicHeight);
+			}
+
+			this.Invalidate();
+		}
+
 		private void SpawnMonster()
 		{
 			int level = _settings.PlayerProgress.Level;
@@ -134,8 +231,76 @@ namespace MathQuizLocker
 				_lblFeedback.Visible = true;
 			}
 
+			// Load transition graphic for current scene (positioned on right side)
+			LoadTransitionGraphicForCurrentBiome();
+
 			LayoutCombat();
 			Invalidate(GetCombatZone());
+		}
+
+		/// <summary>Loads the transition graphic for the current biome and positions it on the right side.</summary>
+		private void LoadTransitionGraphicForCurrentBiome()
+		{
+			// Determine next biome (same as current for now, will be updated on transition)
+			int level = _settings.PlayerProgress.Level;
+			string nextBiome = level switch
+			{
+				1 => "meadow",
+				2 => "swamp",
+				3 => "forest",
+				4 => "cave",
+				_ => "castle"
+			};
+
+			// Look up transition graphic (same biome to same biome for initial scene)
+			string? transitionGraphicPath = _transitionGraphicService.GetTransitionGraphic(_currentBiome, nextBiome);
+			if (string.IsNullOrEmpty(transitionGraphicPath))
+			{
+				// Fallback: try same-to-same transition
+				transitionGraphicPath = _transitionGraphicService.GetTransitionGraphic(_currentBiome, _currentBiome);
+			}
+
+			if (!string.IsNullOrEmpty(transitionGraphicPath))
+			{
+				if (File.Exists(transitionGraphicPath))
+				{
+					var loadedImg = AssetCache.GetImageClone(transitionGraphicPath);
+					if (loadedImg != null)
+					{
+						ReplaceImage(ref _transitionGraphicImg, loadedImg);
+
+						// Position on right side (half visible)
+						// Scale to full screen height while preserving aspect ratio
+						float scale = this.ClientSize.Height / 1080f;
+						float targetHeight = this.ClientSize.Height;
+						float aspectRatio = _transitionGraphicImg != null 
+							? (float)_transitionGraphicImg.Width / _transitionGraphicImg.Height 
+							: 0.2f; // Default aspect ratio if image is null
+						float graphicWidth = targetHeight * aspectRatio;
+						float graphicHeight = targetHeight;
+						
+						_transitionGraphicRect = new RectangleF(
+							this.ClientSize.Width - graphicWidth / 2f,
+							0,
+							graphicWidth,
+							graphicHeight);
+
+						System.Diagnostics.Debug.WriteLine($"[TRANSITION GRAPHIC] Loaded: {transitionGraphicPath}, Original: {_transitionGraphicImg?.Width}x{_transitionGraphicImg?.Height}, Aspect: {aspectRatio:F2}, Scaled: {graphicWidth:F0}x{graphicHeight:F0}, Rect: {_transitionGraphicRect}");
+					}
+					else
+					{
+						System.Diagnostics.Debug.WriteLine($"[TRANSITION GRAPHIC] Failed to load image: {transitionGraphicPath}");
+					}
+				}
+				else
+				{
+					System.Diagnostics.Debug.WriteLine($"[TRANSITION GRAPHIC] File not found: {transitionGraphicPath}");
+				}
+			}
+			else
+			{
+				System.Diagnostics.Debug.WriteLine($"[TRANSITION GRAPHIC] No path found for {_currentBiome} -> {nextBiome}");
+			}
 		}
 
 		/// <summary>Loads monster sprite for current monster and state ("idle", "hit", "attack") and updates _monsterImg.</summary>

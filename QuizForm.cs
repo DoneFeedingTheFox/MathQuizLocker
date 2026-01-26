@@ -18,6 +18,7 @@ namespace MathQuizLocker
 		private readonly SolidBrush _overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0));
 
 		private MonsterService _monsterService;
+		private TransitionGraphicService _transitionGraphicService;
 
 		// Manual GDI+ Renderables (Images + Rectangles)
 		private Image? _knightImg, _monsterImg;
@@ -47,6 +48,7 @@ namespace MathQuizLocker
 
 		// Animation / physics
 		private readonly System.Windows.Forms.Timer _heartbeat = new System.Windows.Forms.Timer { Interval = 15 };
+		private int _heartbeatInterval = 15; // Dynamic interval (faster during transitions)
 		private long _lastTickMs;
 
 		private bool _isDicePhysicsActive = false;
@@ -60,6 +62,18 @@ namespace MathQuizLocker
 		// Chest animation variables
 		private int _chestShakeTicks = 0;
 		private bool _isChestOpening = false;
+
+		// Transition animation variables
+		private bool _isTransitioning = false;
+		private float _transitionOffsetX = 0f; // 0 = current scene, screen width = fully scrolled
+		private float _transitionStartTime = 0f; // Time when transition started
+		private Image? _nextBackgroundImage;
+		private Image? _nextMonsterImg;
+		private Image? _transitionGraphicImg; // Current transition graphic (visible in scene)
+		private Image? _nextTransitionGraphicImg; // Next transition graphic (for next scene)
+		private RectangleF _transitionGraphicRect; // Current graphic position
+		private RectangleF _nextMonsterRect;
+		private string _currentBiome = "meadow"; // Tracks current biome name for transition lookup
 
 		// Dice physics variables
 		private readonly Random _rng = new Random(); // Single RNG for dice, questions, and any randomness
@@ -101,6 +115,7 @@ namespace MathQuizLocker
 			_quizEngine = new QuizEngine(_settings, _rng);
 			_session = new GameSessionManager(_settings, _quizEngine);
 			_monsterService = new MonsterService();
+			_transitionGraphicService = new TransitionGraphicService();
 
 			// Reduce flicker during animations
 			this.DoubleBuffered = true;
@@ -133,10 +148,18 @@ namespace MathQuizLocker
 			_countdownTimer.Interval = 1000;
 		}
 
-		/// <summary>~15ms timer: updates floating damage numbers, dice physics, melee, monster lunge, chest shake; invalidates only dirty regions.</summary>
+		/// <summary>~15ms timer (8ms during transitions): updates floating damage numbers, dice physics, melee, monster lunge, chest shake; invalidates only dirty regions.</summary>
 		private void Heartbeat_Tick(object? sender, EventArgs e)
 		{
 			if (!IsHandleCreated || IsDisposed) return;
+
+			// Use faster update rate during transitions for smoother scrolling
+			int targetInterval = _isTransitioning ? 8 : 15;
+			if (_heartbeatInterval != targetInterval)
+			{
+				_heartbeatInterval = targetInterval;
+				_heartbeat.Interval = targetInterval;
+			}
 
 			long now = Environment.TickCount64;
 			float dt = Math.Clamp((now - _lastTickMs) / 1000f, 0f, 0.05f);
@@ -164,6 +187,11 @@ namespace MathQuizLocker
 			if (_isChestOpening)
 			{
 				if (UpdateChestShake(ref dirty)) anyDirty = true;
+			}
+
+			if (_isTransitioning)
+			{
+				if (UpdateTransition(dt, ref dirty)) anyDirty = true;
 			}
 
 			if (anyDirty)
@@ -394,61 +422,156 @@ namespace MathQuizLocker
 				return;
 			}
 
-			e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
-			e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
-			e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
-			e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
-
-			base.OnPaint(e);
+			// Use higher quality rendering during transitions for smoother visuals
+			if (_isTransitioning)
+			{
+				e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
+				e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+				e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+				e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+			}
+			else
+			{
+				e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
+				e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
+				e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+				e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
+			}
 
 			var g = e.Graphics;
+			int screenWidth = this.ClientSize.Width;
+			int screenHeight = this.ClientSize.Height;
 
-			// Shadows first (behind sprites)
-			DrawGroundShadow(g, _knightDrawRect);
-			DrawGroundShadow(g, _monsterDrawRect);
-
-			if (_knightImg != null) g.DrawImage(_knightImg, _knightDrawRect);
-			if (_monsterImg != null) g.DrawImage(_monsterImg, _monsterDrawRect);
-
-
-			// 2. Health bars
-			DrawHealthBar(g, Rectangle.Round(_knightRect), _session.CurrentPlayerHealth, 100, Color.LimeGreen);
-			DrawHealthBar(g, Rectangle.Round(_monsterRect), _session.CurrentMonsterHealth, _session.MaxMonsterHealth, Color.Red);
-
-			// 3. Dice (physics or static)
-			if (_isDicePhysicsActive)
+			if (_isTransitioning)
 			{
-				for (int i = 0; i < 3; i++)
-				{
-					Image? img = (i == 0) ? _die1Img : (i == 1) ? _die2Img : _mulImg;
-					if (img == null) continue;
+				// Draw both scenes during transition with smooth transforms
+				// Current scene sliding left
+				var state1 = g.Save();
+				g.TranslateTransform(-_transitionOffsetX, 0);
+				DrawScene(g, true);
+				g.Restore(state1);
 
-					var pos = _diceCurrentPositions[i];
-					var state = g.Save();
-					g.TranslateTransform(pos.X + _diceSizePx / 2f, pos.Y + _diceSizePx / 2f);
-					g.RotateTransform(_diceRotationAngles[i]);
-					g.DrawImage(img, -_diceSizePx / 2f, -_diceSizePx / 2f, _diceSizePx, _diceSizePx);
-					g.Restore(state);
+				// Next scene entering from right
+				var state2 = g.Save();
+				g.TranslateTransform(screenWidth - _transitionOffsetX, 0);
+				DrawScene(g, false);
+				g.Restore(state2);
+			}
+			else
+			{
+				// Normal drawing - base.OnPaint draws the background
+				base.OnPaint(e);
+				DrawScene(g, true);
+				// Transition graphic is drawn inside DrawScene, no need to draw again
+			}
+		}
+
+		/// <summary>Draws a scene (current or next) with all its elements.</summary>
+		private void DrawScene(Graphics g, bool isCurrentScene)
+		{
+			if (isCurrentScene)
+			{
+				// Draw current scene
+				if (this.BackgroundImage != null)
+				{
+					g.DrawImage(this.BackgroundImage, this.ClientRectangle);
+				}
+
+				// Shadows first (behind sprites and transition graphic)
+				DrawGroundShadow(g, _knightDrawRect);
+				DrawGroundShadow(g, _monsterDrawRect);
+
+				if (_knightImg != null) g.DrawImage(_knightImg, _knightDrawRect);
+				if (_monsterImg != null) g.DrawImage(_monsterImg, _monsterDrawRect);
+
+				// Draw transition graphic AFTER sprites so it appears in front (acts as separator)
+				if (_transitionGraphicImg != null)
+				{
+					g.DrawImage(_transitionGraphicImg, _transitionGraphicRect);
+				}
+
+				// Health bars
+				DrawHealthBar(g, Rectangle.Round(_knightRect), _session.CurrentPlayerHealth, 100, Color.LimeGreen);
+				DrawHealthBar(g, Rectangle.Round(_monsterRect), _session.CurrentMonsterHealth, _session.MaxMonsterHealth, Color.Red);
+
+				// Dice (physics or static)
+				if (_isDicePhysicsActive)
+				{
+					for (int i = 0; i < 3; i++)
+					{
+						Image? img = (i == 0) ? _die1Img : (i == 1) ? _die2Img : _mulImg;
+						if (img == null) continue;
+
+						var pos = _diceCurrentPositions[i];
+						var state = g.Save();
+						g.TranslateTransform(pos.X + _diceSizePx / 2f, pos.Y + _diceSizePx / 2f);
+						g.RotateTransform(_diceRotationAngles[i]);
+						g.DrawImage(img, -_diceSizePx / 2f, -_diceSizePx / 2f, _diceSizePx, _diceSizePx);
+						g.Restore(state);
+					}
+				}
+				else if (_diceVisible)
+				{
+					if (_die1Img != null) g.DrawImage(_die1Img, _die1Rect);
+					if (_die2Img != null) g.DrawImage(_die2Img, _die2Rect);
+					if (_mulImg != null) g.DrawImage(_mulImg, _mulRect);
+				}
+
+				// Loot and Chest
+				if (_chestVisible && _chestImg != null) g.DrawImage(_chestImg, _chestRect);
+				if (_lootVisible && _lootImg != null) g.DrawImage(_lootImg, _lootRect);
+
+				// Floating Damage
+				foreach (var dp in _damageNumbers.ToList())
+					g.DrawString(dp.Text, _damageFont, _damageBrush, dp.Position);
+
+				// Game Over Overlay
+				if (_session.CurrentPlayerHealth <= 0)
+					g.FillRectangle(_overlayBrush, this.ClientRectangle);
+			}
+			else
+			{
+				// Draw next scene
+				// Note: This is called with transform TranslateTransform(screenWidth - _transitionOffsetX, 0)
+				// So coordinates here are relative to the next scene's origin
+				
+				if (_nextBackgroundImage != null)
+				{
+					g.DrawImage(_nextBackgroundImage, this.ClientRectangle);
+				}
+
+				// Draw next monster first (behind the transition graphic)
+				if (_nextMonsterImg != null)
+				{
+					DrawGroundShadow(g, _nextMonsterRect);
+					g.DrawImage(_nextMonsterImg, _nextMonsterRect);
+				}
+
+				// Draw next transition graphic AFTER monster so it appears in front (acts as separator)
+				if (_nextTransitionGraphicImg != null)
+				{
+					// Calculate the same way as current scene's graphic
+					// Scale to full screen height while preserving aspect ratio
+					float targetHeight = this.ClientSize.Height;
+					float aspectRatio = (float)_nextTransitionGraphicImg.Width / _nextTransitionGraphicImg.Height;
+					float graphicWidth = targetHeight * aspectRatio;
+					float graphicHeight = targetHeight;
+					
+					// Position on right side of the next scene
+					// The scene is drawn with transform: TranslateTransform(screenWidth - _transitionOffsetX, 0)
+					// We want the graphic to appear at screen position: screenWidth - graphicWidth/2
+					// To achieve this in scene coordinates, we position it at the right edge of the scene
+					// The scene's right edge in scene coordinates is at screenWidth
+					// So position the graphic at screenWidth - graphicWidth/2 (same as current scene)
+					var nextGraphicRect = new RectangleF(
+						this.ClientSize.Width - graphicWidth / 2f,
+						0,
+						graphicWidth,
+						graphicHeight);
+					
+					g.DrawImage(_nextTransitionGraphicImg, nextGraphicRect);
 				}
 			}
-			else if (_diceVisible)
-			{
-				if (_die1Img != null) g.DrawImage(_die1Img, _die1Rect);
-				if (_die2Img != null) g.DrawImage(_die2Img, _die2Rect);
-				if (_mulImg != null) g.DrawImage(_mulImg, _mulRect);
-			}
-
-			// 4. Loot and Chest
-			if (_chestVisible && _chestImg != null) g.DrawImage(_chestImg, _chestRect);
-			if (_lootVisible && _lootImg != null) g.DrawImage(_lootImg, _lootRect);
-
-			// 5. Floating Damage
-			foreach (var dp in _damageNumbers.ToList())
-				g.DrawString(dp.Text, _damageFont, _damageBrush, dp.Position);
-
-			// 6. Game Over Overlay
-			if (_session.CurrentPlayerHealth <= 0)
-				g.FillRectangle(_overlayBrush, this.ClientRectangle);
 		}
 
 		protected override void Dispose(bool disposing)
@@ -490,6 +613,10 @@ namespace MathQuizLocker
 			_mulImg?.Dispose(); _mulImg = null;
 			_chestImg?.Dispose(); _chestImg = null;
 			_lootImg?.Dispose(); _lootImg = null;
+			_transitionGraphicImg?.Dispose(); _transitionGraphicImg = null;
+			_nextTransitionGraphicImg?.Dispose(); _nextTransitionGraphicImg = null;
+			_nextBackgroundImage?.Dispose(); _nextBackgroundImage = null;
+			_nextMonsterImg?.Dispose(); _nextMonsterImg = null;
 		}
 
 		private static void ReplaceImage(ref Image? target, Image? next)

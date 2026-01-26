@@ -231,5 +231,112 @@ namespace MathQuizLocker
 			dirty = dirty.IsEmpty ? Rectangle.Union(oldR, newR) : Rectangle.Union(dirty, Rectangle.Union(oldR, newR));
 			return true;
 		}
+
+		/// <summary>Updates fade transition animation. Returns true if transition is still active.</summary>
+		private bool UpdateTransition(float dt, ref Rectangle dirty)
+		{
+			if (!_isTransitioning) return false;
+
+			int screenWidth = this.ClientSize.Width;
+			const float transitionDuration = 0.65f; // seconds for full transition
+
+			// Time-based animation for consistent smoothness
+			_transitionStartTime += dt;
+			float progress = Math.Min(_transitionStartTime / transitionDuration, 1.0f);
+			
+			// Ease-in-out cubic for smooth acceleration and deceleration
+			float easedProgress;
+			if (progress < 0.5f)
+			{
+				// Ease in: accelerate (cubic)
+				easedProgress = 4f * progress * progress * progress;
+			}
+			else
+			{
+				// Ease out: decelerate (cubic)
+				float t = 2f * progress - 1f;
+				easedProgress = 1f - (1f - t) * (1f - t) * (1f - t) / 2f;
+			}
+
+			// Set offset based on eased progress
+			_transitionOffsetX = easedProgress * screenWidth;
+
+			if (_transitionOffsetX >= screenWidth || progress >= 1.0f)
+			{
+				// Transition complete
+				_transitionOffsetX = screenWidth;
+
+				// Dispose old images
+				this.BackgroundImage?.Dispose();
+				_monsterImg?.Dispose();
+				_transitionGraphicImg?.Dispose();
+
+				// Swap next images to current
+				this.BackgroundImage = _nextBackgroundImage;
+				this.BackgroundImageLayout = ImageLayout.Stretch;
+				_nextBackgroundImage = null;
+
+				_monsterImg = _nextMonsterImg;
+				_monsterRect = _nextMonsterRect;
+				RecalcMonsterDrawRect();
+				_nextMonsterImg = null;
+
+				// Move transition graphic from right to left side
+				_transitionGraphicImg = _nextTransitionGraphicImg;
+				if (_transitionGraphicImg != null)
+				{
+					// Scale to full screen height while preserving aspect ratio
+					float targetHeight = this.ClientSize.Height;
+					float aspectRatio = (float)_transitionGraphicImg.Width / _transitionGraphicImg.Height;
+					float graphicWidth = targetHeight * aspectRatio;
+					float graphicHeight = targetHeight;
+					_transitionGraphicRect = new RectangleF(
+						-graphicWidth / 2f, // Left side (half visible)
+						0,
+						graphicWidth,
+						graphicHeight);
+				}
+				_nextTransitionGraphicImg = null;
+
+				// Update current biome
+				int level = _settings.PlayerProgress.Level;
+				_currentBiome = level switch
+				{
+					1 => "meadow",
+					2 => "swamp",
+					3 => "forest",
+					4 => "cave",
+					_ => "castle"
+				};
+
+				// Finalize new scene
+				_isTransitioning = false;
+				_transitionOffsetX = 0f;
+
+				// Restore combat UI
+				_txtAnswer.Visible = true;
+				_btnSubmit.Visible = true;
+				_diceVisible = true;
+
+				// Finalize monster setup
+				var monsterConfig = _monsterService.GetMonsterByLevel(level, CheckIfBossShouldSpawn());
+				_currentMonsterName = monsterConfig.Name;
+				_session.StartNewBattle(monsterConfig);
+				UpdatePlayerHud();
+
+				_secondsRemaining = _session.CurrentMonsterAttackInterval;
+				_lblTimer.Text = _secondsRemaining.ToString();
+				_lblTimer.Visible = true;
+				_lblTimer.BringToFront();
+				_countdownTimer.Start();
+
+				GenerateQuestion();
+				LayoutCombat();
+			}
+
+			// Invalidate entire screen for transition
+			dirty = dirty.IsEmpty ? this.ClientRectangle : Rectangle.Union(dirty, this.ClientRectangle);
+			return true;
+		}
 	}
 }

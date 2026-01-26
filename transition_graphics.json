@@ -1,0 +1,47 @@
+[
+  {
+    "FromBiome": "meadow",
+    "ToBiome": "meadow",
+    "GraphicPath": "TransitionGraphics/meadow_tree.png"
+  },
+  {
+    "FromBiome": "meadow",
+    "ToBiome": "swamp",
+    "GraphicPath": "TransitionGraphics/meadow_to_swamp.png"
+  },
+  {
+    "FromBiome": "swamp",
+    "ToBiome": "swamp",
+    "GraphicPath": "TransitionGraphics/swamp_tree.png"
+  },
+  {
+    "FromBiome": "swamp",
+    "ToBiome": "forest",
+    "GraphicPath": "TransitionGraphics/swamp_to_forest.png"
+  },
+  {
+    "FromBiome": "forest",
+    "ToBiome": "forest",
+    "GraphicPath": "TransitionGraphics/forest_tree.png"
+  },
+  {
+    "FromBiome": "forest",
+    "ToBiome": "cave",
+    "GraphicPath": "TransitionGraphics/forest_to_cave_entrance.png"
+  },
+  {
+    "FromBiome": "cave",
+    "ToBiome": "cave",
+    "GraphicPath": "TransitionGraphics/cave_entrance.png"
+  },
+  {
+    "FromBiome": "cave",
+    "ToBiome": "castle",
+    "GraphicPath": "TransitionGraphics/cave_to_castle.png"
+  },
+  {
+    "FromBiome": "castle",
+    "ToBiome": "castle",
+    "GraphicPath": "TransitionGraphics/castle_pillar.png"
+  }
+]
