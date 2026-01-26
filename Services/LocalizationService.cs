@@ -1,15 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using MathQuizLocker;
 
 namespace MathQuizLocker.Services
 {
+	/// <summary>Loads story text from Assets/StoryText/strings_{langCode}.json and serves it by level.</summary>
 	public static class LocalizationService
 	{
 		private static Dictionary<string, string> _storyText = new();
 
-		// Try this more robust reading method in LocalizationService.cs
+		/// <summary>Loads strings from Assets/StoryText/strings_{langCode}.json. Keys like "level_1", "level_2".</summary>
 		public static void LoadLanguage(string langCode)
 		{
 			string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "StoryText", $"strings_{langCode}.json");
@@ -36,11 +38,12 @@ namespace MathQuizLocker.Services
 				}
 				catch (Exception ex)
 				{
-					System.Diagnostics.Debug.WriteLine($"Localization Error: {ex.Message}");
+					AppLogger.Warn("Localization load failed: " + ex.Message);
 				}
 			}
 		}
 
+		/// <summary>Returns the story text for the given level, or a default line if missing.</summary>
 		public static string GetStory(int level)
 		{
 			string key = $"level_{level}";

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -9,9 +9,10 @@ using System.Drawing.Drawing2D;
 
 namespace MathQuizLocker
 {
+	/// <summary>Main fullscreen form: combat UI, dice animation, knight/monster sprites, story screen, and quiz flow.</summary>
 	public partial class QuizForm : Form
 	{
-		// Graphics Resources (cached)
+		// --- Graphics resources (caller-disposed where we pass clones) ---
 		private readonly Font _damageFont = new Font("Segoe UI", 48, FontStyle.Bold);
 		private readonly SolidBrush _damageBrush = new SolidBrush(Color.Red);
 		private readonly SolidBrush _overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0));
@@ -61,7 +62,7 @@ namespace MathQuizLocker
 		private bool _isChestOpening = false;
 
 		// Dice physics variables
-		private readonly Random _rng = new Random();
+		private readonly Random _rng = new Random(); // Single RNG for dice, questions, and any randomness
 		private PointF[] _diceVelocities = new PointF[3];
 		private PointF[] _diceCurrentPositions = new PointF[3];
 		private float[] _diceRotationAngles = new float[3];
@@ -82,8 +83,6 @@ namespace MathQuizLocker
 		private Label _lblTimer;
 		private bool _isQuestionPending = false;
 
-		private readonly Random _random = new Random();
-
 		// Flicker prevention
 		protected override CreateParams CreateParams
 		{
@@ -99,12 +98,11 @@ namespace MathQuizLocker
 		public QuizForm(AppSettings settings)
 		{
 			_settings = settings;
-			_quizEngine = new QuizEngine(_settings);
+			_quizEngine = new QuizEngine(_settings, _rng);
 			_session = new GameSessionManager(_settings, _quizEngine);
-
 			_monsterService = new MonsterService();
 
-			// Performance / flicker prevention
+			// Reduce flicker during animations
 			this.DoubleBuffered = true;
 			this.SetStyle(ControlStyles.AllPaintingInWmPaint |
 						  ControlStyles.UserPaint |
@@ -113,7 +111,8 @@ namespace MathQuizLocker
 			this.UpdateStyles();
 
 			// Initialize UI
-			LocalizationService.LoadLanguage("no");
+			string lang = string.IsNullOrWhiteSpace(_settings.LanguageCode) ? "no" : _settings.LanguageCode.Trim();
+			LocalizationService.LoadLanguage(lang);
 			InitializeCombatUi();
 			InitStoryUi();
 
@@ -134,6 +133,7 @@ namespace MathQuizLocker
 			_countdownTimer.Interval = 1000;
 		}
 
+		/// <summary>~15ms timer: updates floating damage numbers, dice physics, melee, monster lunge, chest shake; invalidates only dirty regions.</summary>
 		private void Heartbeat_Tick(object? sender, EventArgs e)
 		{
 			if (!IsHandleCreated || IsDisposed) return;
@@ -145,10 +145,7 @@ namespace MathQuizLocker
 			Rectangle dirty = Rectangle.Empty;
 			bool anyDirty = false;
 
-			// Floating text lifetime handling (replaces _physicsTimer)
 			if (UpdateFloatingText(dt, ref dirty)) anyDirty = true;
-
-			// Drive animations/physics from one heartbeat
 			if (_isDicePhysicsActive)
 			{
 				if (UpdateDicePhysics(dt, ref dirty)) anyDirty = true;
@@ -176,6 +173,7 @@ namespace MathQuizLocker
 			}
 		}
 
+		/// <summary>Every second: decrement countdown; at zero apply monster timer damage and reset interval.</summary>
 		private void CountdownTimer_Tick(object? sender, EventArgs e)
 		{
 			if (_session.CurrentPlayerHealth <= 0)
@@ -451,6 +449,17 @@ namespace MathQuizLocker
 			// 6. Game Over Overlay
 			if (_session.CurrentPlayerHealth <= 0)
 				g.FillRectangle(_overlayBrush, this.ClientRectangle);
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				_damageFont?.Dispose();
+				_damageBrush?.Dispose();
+				_overlayBrush?.Dispose();
+			}
+			base.Dispose(disposing);
 		}
 
 		protected override void OnFormClosing(FormClosingEventArgs e)

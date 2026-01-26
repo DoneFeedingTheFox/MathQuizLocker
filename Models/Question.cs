@@ -1,5 +1,6 @@
-﻿namespace MathQuizLocker.Models
+namespace MathQuizLocker.Models
 {
+    /// <summary>A multiplication question: A × B.</summary>
     public class Question
     {
         public int A { get; set; }

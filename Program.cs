@@ -7,12 +7,13 @@ using Microsoft.Win32;
 
 namespace MathQuizLocker
 {
+    /// <summary>Application entry point: single-instance guard, update check, then main quiz/lock form.</summary>
     internal static class Program
     {
-     
+        /// <summary>Ensures only one instance runs; shared name so it works across sessions.</summary>
         private static Mutex _mutex = new Mutex(true, @"Global\MathQuizLocker-Unique-ID-99");
 
-
+        /// <summary>Adds or removes the app from Windows "Run at startup" (Current User Run key). Only in Release build.</summary>
         public static void SetExternalAutostart(bool enable)
         {
 #if !DEBUG
@@ -25,7 +26,7 @@ namespace MathQuizLocker
                     {
                         if (enable)
                         {
-                            // Setter banen til den kjørbare filen (.exe)
+                            // Store path to the executable so Windows starts us at login
                             key.SetValue("MathQuizLocker", Application.ExecutablePath);
                         }
                         else
@@ -37,7 +38,7 @@ namespace MathQuizLocker
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Kunne ikke sette autostart: " + ex.Message);
+                AppLogger.Warn("Could not set autostart: " + ex.Message);
             }
 #endif
         }
@@ -47,25 +48,22 @@ namespace MathQuizLocker
         {
             VelopackApp.Build().Run();
 
+            // Single-instance: if another instance holds the mutex, exit immediately
             if (!_mutex.WaitOne(TimeSpan.Zero, true))
-            {
-                return; // Already running
-            }
+                return;
 
             try
             {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-                // 1. Pre-load settings here instead of inside a context constructor
                 var settings = AppSettings.Load();
 
+                // UpdateForm checks for updates; on OK we proceed to the main game form
                 using (var updateForm = new UpdateForm())
                 {
                     if (updateForm.ShowDialog() == DialogResult.OK)
                     {
-                        // 2. FIX: Launch QuizForm directly. 
-                        // This eliminates the 75.27% LockApplicationContext CPU hang.
                         var quiz = new QuizForm(settings);
                         Application.Run(quiz);
                     }
@@ -77,7 +75,7 @@ namespace MathQuizLocker
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Startup Error: {ex.Message}");
+                AppLogger.Error("Startup error", ex);
 
                 // Fallback launch if update check fails
                 var settings = AppSettings.Load();

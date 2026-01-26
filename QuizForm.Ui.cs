@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using MathQuizLocker.Services;
@@ -12,7 +12,7 @@ namespace MathQuizLocker
 		private Label _lblLevel, _lblXpStatus, _lblFeedback, _lblGameOver;
 		private Button _btnReset, _btnRestart;
 
-		// Initializes all UI components related to combat (non-render controls only)
+		/// <summary>Creates and arranges combat controls: answer box, ATTACK, level/XP labels, continue/exit, timer. DEBUG reset only in Debug build.</summary>
 		private void InitializeCombatUi()
 		{
 			_lblTimer = new Label
@@ -160,6 +160,9 @@ namespace MathQuizLocker
 			_btnSubmit.BringToFront();
 			_lblFeedback.BringToFront();
 
+#if !DEBUG
+			_btnReset.Visible = false;
+#endif
 			_btnReset.Click += (s, e) => ResetProgress();
 			_btnSubmit.Click += BtnSubmit_Click;
 
@@ -222,6 +225,7 @@ namespace MathQuizLocker
 			this.Invalidate();
 		}
 
+		/// <summary>Called when monster HP reaches 0: applies level-up on boss kill, shows loot/story or continue button.</summary>
 		private void ShowVictoryScreen()
 		{
 			_awaitingChestOpen = false;
@@ -238,14 +242,14 @@ namespace MathQuizLocker
 			System.Diagnostics.Debug.WriteLine($"XP Required for Level {currentLevel}: {requiredXp}");
 			System.Diagnostics.Debug.WriteLine($"----------------------");
 
-			_settings.PlayerProgress.CurrentXp += killReward;
+			// XP already added by GameSessionManager.ApplyDamage via XpSystem.AddXp; do not add again.
 
 			if (wasBossFight)
 			{
 				_settings.PlayerProgress.Level++;
 				_settings.PlayerProgress.CurrentXp = 0;
 
-				if (_settings.MaxFactorUnlocked < 10) _settings.MaxFactorUnlocked++;
+				_quizEngine.PromoteToNextLevel();
 
 				_awaitingChestOpen = true;
 				System.Diagnostics.Debug.WriteLine("EVENT: Boss Defeated! Leveling Up.");

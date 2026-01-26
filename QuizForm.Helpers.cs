@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using MathQuizLocker.Services;
@@ -8,14 +8,12 @@ namespace MathQuizLocker
 {
 	public partial class QuizForm
 	{
+		/// <summary>Sets the form background from Assets/Backgrounds based on player level and boss flag (e.g. meadow_01.png or castle_01_boss.png).</summary>
 		private void ApplyBiomeForCurrentLevel()
 		{
-			// Dispose old background safely
 			var oldBg = this.BackgroundImage;
 			this.BackgroundImage = null;
 			oldBg?.Dispose();
-
-			// Story screen background
 			if (_isShowingStory)
 			{
 				var img = AssetCache.GetImageClone(AssetPaths.Background("scroll_bg.png"));
@@ -62,11 +60,9 @@ namespace MathQuizLocker
 			}
 		}
 
-
+		/// <summary>Scales image to fit inside container preserving aspect ratio; returns centered rectangle.</summary>
 		private Rectangle GetPaddedBounds(Image img, Rectangle container)
 		{
-			// If you already had a specific implementation, keep it.
-			// This is a safe fallback that preserves aspect ratio inside container.
 			float iw = img.Width;
 			float ih = img.Height;
 			float cw = container.Width;
@@ -142,17 +138,16 @@ namespace MathQuizLocker
 			Invalidate(GetCombatZone());
 		}
 
+		/// <summary>Loads monster sprite for current monster and state ("idle", "hit", "attack") and updates _monsterImg.</summary>
 		private void UpdateMonsterSprite(string state)
 		{
 			var config = _monsterService.GetMonster(_currentMonsterName);
 			if (config == null || string.IsNullOrWhiteSpace(config.SpritePath))
 				return;
 
-			// SpritePath is normalized to an Assets-based full path by MonsterService.LoadConfig()
-			// :contentReference[oaicite:11]{index=11}
 			string basePath = config.SpritePath;
 
-			// Allow either ".../goblin" or ".../goblin.png" in JSON
+			// SpritePath from JSON may be ".../goblin" or ".../goblin.png"; we append _state and .png
 			if (basePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
 				basePath = basePath.Substring(0, basePath.Length - 4);
 
@@ -173,15 +168,15 @@ namespace MathQuizLocker
 			int maxA = Math.Min(12, playerLevel + 1);
 			int maxB = 10;
 
-			int a = _random.Next(1, maxA + 1);
-			int b = _random.Next(1, maxB + 1);
+			int a = _rng.Next(1, maxA + 1);
+			int b = _rng.Next(1, maxB + 1);
 
 			return new Question(a, b);
 		}
 
+		/// <summary>Clears input, gets next question from engine, updates dice images and starts dice roll animation.</summary>
 		private void GenerateQuestion()
 		{
-			// 1. CLEAR PREVIOUS DATA
 			_txtAnswer.Clear();
 			_txtAnswer.Enabled = true;
 			_btnSubmit.Enabled = true;
@@ -194,7 +189,6 @@ namespace MathQuizLocker
 
 			_isQuestionPending = false;
 
-			// CRITICAL: Always get the question from the engine to keep its internal state aligned.
 			var q = _quizEngine.GetNextQuestion();
 			_a = q.a;
 			_b = q.b;
@@ -310,18 +304,18 @@ namespace MathQuizLocker
 			if (_session.CurrentPlayerHealth <= 0 || _isAnimating || !int.TryParse(_txtAnswer.Text, out int ans))
 				return;
 
-			var result = _session.ProcessAnswer(ans, _a, _b); // :contentReference[oaicite:6]{index=6}
+			var result = _session.ProcessAnswer(ans, _a, _b);
 
 			if (result.IsCorrect)
 			{
-				AnimateMeleeStrike(ans); // damage == answer :contentReference[oaicite:7]{index=7}
+				AnimateMeleeStrike(ans);
 			}
 			else
 			{
 				_secondsRemaining = _session.CurrentMonsterAttackInterval;
-				int damage = _a * _b; // :contentReference[oaicite:8]{index=8}
+				int damage = _a * _b;
 				AnimateMonsterAttack(damage);
-				GenerateQuestion(); // :contentReference[oaicite:9]{index=9}
+				GenerateQuestion();
 			}
 		}
 

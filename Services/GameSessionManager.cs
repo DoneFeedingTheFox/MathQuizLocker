@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Drawing;
 using MathQuizLocker.Models;
 
 namespace MathQuizLocker.Services
 {
+    /// <summary>Result of processing one player answer: correctness, message and color for UI.</summary>
     public class QuizResult
     {
         public bool IsCorrect { get; set; }
@@ -11,10 +12,9 @@ namespace MathQuizLocker.Services
         public bool LeveledUp { get; set; }
         public string Message { get; set; } = "";
         public Color MessageColor { get; set; }
+    }
 
-	
-	}
-
+    /// <summary>Runs a single combat: monster/player HP, damage, XP, and answer validation.</summary>
     public class GameSessionManager
     {
         private readonly AppSettings _settings;
@@ -49,6 +49,7 @@ namespace MathQuizLocker.Services
             _playerHealth = MaxPlayerHealth;   
         }
 
+        /// <summary>Starts a new fight with the given monster; resets monster/player HP and attack timer.</summary>
         public void StartNewBattle(MonsterConfig config)
         {
 			_progress = _settings.PlayerProgress;
@@ -64,7 +65,10 @@ namespace MathQuizLocker.Services
 			Console.WriteLine($"Battle Start: {config.MaxHealth} HP, {config.XpReward} XP Reward");
 		}
 
+        /// <summary>Damage the player takes when the monster timer expires.</summary>
         public int GetTimerDamage() => _currentMonsterAttackDamage;
+
+        /// <summary>Applies damage to the monster. If it dies, adds XP to progress and returns true.</summary>
         public bool ApplyDamage(int damage, out int xpGained, out bool leveledUp)
 		{
 			xpGained = 0;
@@ -91,6 +95,7 @@ namespace MathQuizLocker.Services
 		}
         
 
+        /// <summary>Reduces player HP (e.g. wrong answer). Clamped to 0.</summary>
         public void ApplyPlayerDamage(int damage)
         {
             _playerHealth -= damage;
@@ -99,6 +104,7 @@ namespace MathQuizLocker.Services
             Console.WriteLine($"Knight took {damage} dmg. Health left: {_playerHealth}");
         }
 
+        /// <summary>Checks the answer for the given (a,b) question and returns a result for the UI.</summary>
         public QuizResult ProcessAnswer(int answer, int a, int b)
         {
             bool isCorrect = _quizEngine.SubmitAnswer(answer);
@@ -107,8 +113,8 @@ namespace MathQuizLocker.Services
             if (isCorrect)
             {
                 AppSettings.Save(_settings);
-                result.Message = result.LeveledUp ? $"LEVEL UP! Level {_settings.PlayerProgress.Level}!" : $"Correct!";
-                result.MessageColor = result.LeveledUp ? Color.Gold : Color.LimeGreen;
+                result.Message = "Correct!";
+                result.MessageColor = Color.LimeGreen;
             }
             else
             {

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -7,8 +7,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>1.7.0</Version>
-    <AssemblyVersion>1.4.4.0</AssemblyVersion>
-    <FileVersion>1.4.4.0</FileVersion>
+    <AssemblyVersion>1.7.0.0</AssemblyVersion>
+    <FileVersion>1.7.0.0</FileVersion>
     <Product>MathQuizLocker</Product>
     <Company>DoneFeedingTheFox</Company>
     <ApplicationIcon>icon.ico</ApplicationIcon>
@@ -21,11 +21,16 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="MathQuizLocker.Tests\**" />
+    <EmbeddedResource Remove="MathQuizLocker.Tests\**" />
+    <None Remove="MathQuizLocker.Tests\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Folder Include="Assets\Dice\" />
     <Folder Include="Assets\Monsters\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Velopack" Version="0.0.1298" />
+    <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
   </ItemGroup>
   <ItemGroup>
     <None Include="icon.ico" Pack="true" />

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using MathQuizLocker.Services;
 
@@ -20,9 +20,9 @@ namespace MathQuizLocker
 		private float _monsterLungeSpeed = 0f;
 		private bool _monsterHeavyHit = false;
 
+		/// <summary>Starts knight attack animation; applies damage to monster and shows floating number.</summary>
 		private void AnimateMeleeStrike(int damage)
 		{
-			// Preserve underlying logic
 			bool isDefeated = _session.ApplyDamage(damage, out int xpGained, out bool leveledUp);
 			UpdatePlayerHud();
 
@@ -108,7 +108,7 @@ namespace MathQuizLocker
 			_monsterLungeActive = true;
 
 			// Preserve your original behavior: monster goes into attack sprite first
-			UpdateMonsterSprite("attack"); // :contentReference[oaicite:2]{index=2}
+			UpdateMonsterSprite("attack");
 
 			_monsterStep = 0;
 			_monsterOrigX = _monsterRect.X;
@@ -120,7 +120,7 @@ namespace MathQuizLocker
 			_monsterLungeSpeed = lungeDistance / 6f;
 
 			// Correct API from your session manager
-			_session.ApplyPlayerDamage(damage); // :contentReference[oaicite:4]{index=4}
+			_session.ApplyPlayerDamage(damage);
 			bool playerDefeated = _session.CurrentPlayerHealth <= 0;
 
 			UpdatePlayerHud();

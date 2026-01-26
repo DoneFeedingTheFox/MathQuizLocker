@@ -3,6 +3,7 @@ using System.IO;
 
 namespace MathQuizLocker.Services
 {
+    /// <summary>Central place for paths under the Assets folder (next to the executable).</summary>
     public static class AssetPaths
     {
         private static readonly string BaseDir = AppContext.BaseDirectory;

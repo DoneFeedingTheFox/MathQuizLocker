@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 using Velopack;
 using Velopack.Sources;
@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace MathQuizLocker
 {
+	/// <summary>Small dialog that checks for Velopack updates on GitHub; on success closes with OK so the main form runs.</summary>
 	public partial class UpdateForm : Form
 	{
 		private ProgressBar _progressBar;
@@ -42,6 +43,7 @@ namespace MathQuizLocker
 
 		}
 
+		/// <summary>Runs on Shown: check for updates, optionally download and restart; otherwise close with OK.</summary>
 		private async Task CheckForUpdates()
 		{
 			try
@@ -70,7 +72,9 @@ namespace MathQuizLocker
 			}
 			catch (Exception ex)
 			{
-				// If update fails (no internet), just start the game anyway
+				AppLogger.Warn("Update check failed, starting game anyway: " + ex.Message);
+				_lblStatus.Text = "Update check failed. Starting game...";
+				await Task.Delay(800);
 				this.DialogResult = DialogResult.OK;
 				this.Close();
 			}

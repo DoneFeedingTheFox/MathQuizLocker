@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Drawing;
 using System.IO;
@@ -47,6 +47,7 @@ namespace MathQuizLocker
             return lazy.Value;
         }
 
+        /// <summary>Loads the given asset paths into the cache so later GetImageClone/GetMasterBitmap are fast.</summary>
         public static void Preload(params string[] paths)
         {
             if (paths == null) return;

@@ -1,23 +1,23 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using MathQuizLocker.Models;
 
 namespace MathQuizLocker
 {
+    /// <summary>Persistence for app and player state. Stored under %LocalAppData%\MathQuizLocker\settings.json.</summary>
     public class AppSettings
     {
         // --- Core Settings ---
-   
         public bool LockOnWakeFromSleep { get; set; } = true;
         public bool ShowQuizOnStartup { get; set; } = true;
         public int RequiredCorrectAnswers { get; set; } = 10;
+        /// <summary>Highest multiplication row unlocked (e.g. 2 = 1× and 2× table).</summary>
         public int MaxFactorUnlocked { get; set; } = 2;
+
+        /// <summary>Language code for localization (e.g. "no", "en"). Empty = use default "no".</summary>
+        public string LanguageCode { get; set; } = "";
 
         // --- Player Data ---
         public PlayerProgress PlayerProgress { get; set; } = new PlayerProgress();
-
-        // --- Spaced Repetition Data ---
-        // Dictionary key format: "AxB" (e.g., "2x5")
-    
 
         private static readonly string SettingsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -36,12 +36,14 @@ namespace MathQuizLocker
                 if (File.Exists(SettingsPath))
                 {
                     string json = File.ReadAllText(SettingsPath);
-                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    var loaded = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    ValidateAndSanitize(loaded);
+                    return loaded;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to load settings: {ex.Message}");
+                AppLogger.Error("Failed to load settings", ex);
             }
 
             return new AppSettings();
@@ -62,8 +64,21 @@ namespace MathQuizLocker
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
+                AppLogger.Error("Failed to save settings", ex);
             }
+        }
+
+        /// <summary>Ensures loaded settings have valid ranges and non-null sub-objects.</summary>
+        private static void ValidateAndSanitize(AppSettings s)
+        {
+            if (s.PlayerProgress == null)
+                s.PlayerProgress = new PlayerProgress();
+            s.PlayerProgress.Level = Math.Clamp(s.PlayerProgress.Level, 1, 999);
+            s.PlayerProgress.CurrentXp = Math.Max(0, s.PlayerProgress.CurrentXp);
+            s.PlayerProgress.TotalXp = Math.Max(0, s.PlayerProgress.TotalXp);
+            s.PlayerProgress.EquippedKnightStage = Math.Clamp(s.PlayerProgress.EquippedKnightStage, 1, 10);
+            s.MaxFactorUnlocked = Math.Clamp(s.MaxFactorUnlocked, 1, 10);
+            s.LanguageCode ??= "";
         }
 
         /// <summary>
@@ -78,13 +93,15 @@ namespace MathQuizLocker
         }
     }
 
+    /// <summary>Player progression: level, XP, and which knight sprite is equipped.</summary>
     public class PlayerProgress
     {
         public int Level { get; set; } = 1;
+        /// <summary>XP within current level (resets on level-up).</summary>
         public int CurrentXp { get; set; } = 0;
         public int TotalXp { get; set; } = 0;
+        /// <summary>Knight sprite stage 1–10 shown in combat.</summary>
         public int EquippedKnightStage { get; set; } = 1;
-    
     }
 
 }
