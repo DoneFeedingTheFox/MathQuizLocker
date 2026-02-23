@@ -169,6 +169,20 @@ namespace MathQuizLocker
 			if (!string.IsNullOrEmpty(transitionGraphicPath) && File.Exists(transitionGraphicPath))
 			{
 				ReplaceImage(ref _nextTransitionGraphicImg, AssetCache.GetImageClone(transitionGraphicPath));
+
+				if (_nextTransitionGraphicImg != null)
+				{
+					float targetHeight = this.ClientSize.Height;
+					float aspectRatio = (float)_nextTransitionGraphicImg.Width / _nextTransitionGraphicImg.Height;
+					float graphicWidth = targetHeight * aspectRatio;
+					float graphicHeight = targetHeight;
+
+					_nextTransitionGraphicRect = new RectangleF(
+						this.ClientSize.Width - graphicWidth / 2f,
+						0,
+						graphicWidth,
+						graphicHeight);
+				}
 			}
 
 			// Initialize transition state
