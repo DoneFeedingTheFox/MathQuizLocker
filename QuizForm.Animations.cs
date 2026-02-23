@@ -297,6 +297,7 @@ namespace MathQuizLocker
 						graphicHeight);
 				}
 				_nextTransitionGraphicImg = null;
+				_nextTransitionGraphicRect = RectangleF.Empty;
 
 				// Update current biome
 				int level = _settings.PlayerProgress.Level;

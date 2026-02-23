@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Linq;
 using System.Windows.Forms;
 using MathQuizLocker.Services;
-using System.Drawing.Drawing2D;
 
 namespace MathQuizLocker
 {
@@ -72,6 +69,7 @@ namespace MathQuizLocker
 		private Image? _transitionGraphicImg; // Current transition graphic (visible in scene)
 		private Image? _nextTransitionGraphicImg; // Next transition graphic (for next scene)
 		private RectangleF _transitionGraphicRect; // Current graphic position
+		private RectangleF _nextTransitionGraphicRect; // Precomputed next graphic position
 		private RectangleF _nextMonsterRect;
 		private string _currentBiome = "meadow"; // Tracks current biome name for transition lookup
 
@@ -148,13 +146,13 @@ namespace MathQuizLocker
 			_countdownTimer.Interval = 1000;
 		}
 
-		/// <summary>~15ms timer (8ms during transitions): updates floating damage numbers, dice physics, melee, monster lunge, chest shake; invalidates only dirty regions.</summary>
+		/// <summary>~15ms timer (12ms during transitions): updates floating damage numbers, dice physics, melee, monster lunge, chest shake; invalidates only dirty regions.</summary>
 		private void Heartbeat_Tick(object? sender, EventArgs e)
 		{
 			if (!IsHandleCreated || IsDisposed) return;
 
 			// Use faster update rate during transitions for smoother scrolling
-			int targetInterval = _isTransitioning ? 8 : 15;
+			int targetInterval = _isTransitioning ? 12 : 15;
 			if (_heartbeatInterval != targetInterval)
 			{
 				_heartbeatInterval = targetInterval;
@@ -422,13 +420,13 @@ namespace MathQuizLocker
 				return;
 			}
 
-			// Use higher quality rendering during transitions for smoother visuals
+			// Prioritize frame pacing during scene transitions.
 			if (_isTransitioning)
 			{
-				e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Bilinear;
-				e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
-				e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-				e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+				e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.Low;
+				e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
+				e.Graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+				e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
 			}
 			else
 			{
@@ -522,8 +520,11 @@ namespace MathQuizLocker
 				if (_lootVisible && _lootImg != null) g.DrawImage(_lootImg, _lootRect);
 
 				// Floating Damage
-				foreach (var dp in _damageNumbers.ToList())
+				for (int i = 0; i < _damageNumbers.Count; i++)
+				{
+					var dp = _damageNumbers[i];
 					g.DrawString(dp.Text, _damageFont, _damageBrush, dp.Position);
+				}
 
 				// Game Over Overlay
 				if (_session.CurrentPlayerHealth <= 0)
@@ -550,26 +551,7 @@ namespace MathQuizLocker
 				// Draw next transition graphic AFTER monster so it appears in front (acts as separator)
 				if (_nextTransitionGraphicImg != null)
 				{
-					// Calculate the same way as current scene's graphic
-					// Scale to full screen height while preserving aspect ratio
-					float targetHeight = this.ClientSize.Height;
-					float aspectRatio = (float)_nextTransitionGraphicImg.Width / _nextTransitionGraphicImg.Height;
-					float graphicWidth = targetHeight * aspectRatio;
-					float graphicHeight = targetHeight;
-					
-					// Position on right side of the next scene
-					// The scene is drawn with transform: TranslateTransform(screenWidth - _transitionOffsetX, 0)
-					// We want the graphic to appear at screen position: screenWidth - graphicWidth/2
-					// To achieve this in scene coordinates, we position it at the right edge of the scene
-					// The scene's right edge in scene coordinates is at screenWidth
-					// So position the graphic at screenWidth - graphicWidth/2 (same as current scene)
-					var nextGraphicRect = new RectangleF(
-						this.ClientSize.Width - graphicWidth / 2f,
-						0,
-						graphicWidth,
-						graphicHeight);
-					
-					g.DrawImage(_nextTransitionGraphicImg, nextGraphicRect);
+					g.DrawImage(_nextTransitionGraphicImg, _nextTransitionGraphicRect);
 				}
 			}
 		}
