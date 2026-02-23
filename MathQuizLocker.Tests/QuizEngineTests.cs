@@ -47,9 +47,28 @@ namespace MathQuizLocker.Tests
         }
 
         [Fact]
-        public void PromoteToNextLevel_IncrementsUntil10()
+        public void PromoteToNextLevel_SyncsDifficultyWithCurrentLevel()
         {
-            var settings = new AppSettings { MaxFactorUnlocked = 9 };
+            var settings = new AppSettings
+            {
+                MaxFactorUnlocked = 2,
+                PlayerProgress = new PlayerProgress { Level = 5 }
+            };
+            var engine = new QuizEngine(settings);
+
+            engine.PromoteToNextLevel();
+
+            Assert.Equal(6, settings.MaxFactorUnlocked);
+        }
+
+        [Fact]
+        public void PromoteToNextLevel_DoesNotExceed10()
+        {
+            var settings = new AppSettings
+            {
+                MaxFactorUnlocked = 9,
+                PlayerProgress = new PlayerProgress { Level = 12 }
+            };
             var engine = new QuizEngine(settings);
 
             engine.PromoteToNextLevel();

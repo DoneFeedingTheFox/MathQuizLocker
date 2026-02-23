@@ -33,9 +33,11 @@ namespace MathQuizLocker.Services
         /// <summary>Unlocks the next row of the multiplication table (MaxFactorUnlocked, max 10) and saves.</summary>
         public void PromoteToNextLevel()
         {
-            if (_settings.MaxFactorUnlocked < 10)
+            int expectedUnlockForLevel = Math.Clamp(_settings.PlayerProgress.Level + 1, 1, 10);
+
+            if (_settings.MaxFactorUnlocked < expectedUnlockForLevel)
             {
-                _settings.MaxFactorUnlocked++;
+                _settings.MaxFactorUnlocked = expectedUnlockForLevel;
                 AppSettings.Save(_settings);
             }
         }

@@ -74,7 +74,8 @@ namespace MathQuizLocker
             s.PlayerProgress.CurrentXp = Math.Max(0, s.PlayerProgress.CurrentXp);
             s.PlayerProgress.TotalXp = Math.Max(0, s.PlayerProgress.TotalXp);
             s.PlayerProgress.EquippedKnightStage = Math.Clamp(s.PlayerProgress.EquippedKnightStage, 1, 10);
-            s.MaxFactorUnlocked = Math.Clamp(s.MaxFactorUnlocked, 1, 10);
+            int expectedUnlockForLevel = Math.Clamp(s.PlayerProgress.Level + 1, 1, 10);
+            s.MaxFactorUnlocked = Math.Clamp(Math.Max(s.MaxFactorUnlocked, expectedUnlockForLevel), 1, 10);
             s.LanguageCode ??= "";
         }
 
