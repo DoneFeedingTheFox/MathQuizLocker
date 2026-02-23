@@ -52,6 +52,7 @@ namespace MathQuizLocker.Services
 			_maxMonsterHealth = config.MaxHealth;
 			_monsterHealth = config.MaxHealth;			
 			_currentMonsterXpReward = config.XpReward;
+			CurrentBattleXpReward = config.XpReward;
 
             _currentMonsterAttackDamage = config.AttackDamage;
             CurrentMonsterAttackInterval = config.AttackInterval;
@@ -78,9 +79,12 @@ namespace MathQuizLocker.Services
 
 				// Use the XP amount we got from the JSON
 				xpGained = _currentMonsterXpReward;
+				int requiredXp = XpSystem.GetXpRequiredForNextLevel(_progress.Level);
+				int xpBefore = _progress.CurrentXp;
 
 				// Use your XpSystem to update progress
 				XpSystem.AddXp(_progress, _currentMonsterXpReward);
+				leveledUp = xpBefore < requiredXp && _progress.CurrentXp >= requiredXp;
 
 				AppSettings.Save(_settings); // Save progress immediately on kill
 				return true; // Monster defeated
@@ -102,7 +106,7 @@ namespace MathQuizLocker.Services
         /// <summary>Checks the answer for the given (a,b) question and returns a result for the UI.</summary>
         public QuizResult ProcessAnswer(int answer, int a, int b)
         {
-            bool isCorrect = _quizEngine.SubmitAnswer(answer);
+            bool isCorrect = answer == (a * b);
             var result = new QuizResult { IsCorrect = isCorrect };
 
             if (isCorrect)

@@ -22,6 +22,20 @@ namespace MathQuizLocker.Tests
             }
         }
 
+
+        [Fact]
+        public void GetNextQuestion_ClampsInvalidMaxFactorUnlocked()
+        {
+            var settings = new AppSettings { MaxFactorUnlocked = 0 };
+            var rng = new Random(99);
+            var engine = new QuizEngine(settings, rng);
+
+            var (a, b) = engine.GetNextQuestion();
+
+            Assert.InRange(a, 1, 1);
+            Assert.InRange(b, 1, 10);
+        }
+
         [Fact]
         public void SubmitAnswer_ReturnsTrue_WhenCorrect()
         {
