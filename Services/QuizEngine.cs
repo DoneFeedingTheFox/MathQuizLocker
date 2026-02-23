@@ -19,7 +19,7 @@ namespace MathQuizLocker.Services
         /// <summary>Picks a new question: first factor from 1..MaxFactorUnlocked, second from 1..10.</summary>
         public (int a, int b) GetNextQuestion()
         {
-            int limit = _settings.MaxFactorUnlocked;
+            int limit = Math.Clamp(_settings.MaxFactorUnlocked, 1, 10);
             _currentQuestion = (_rng.Next(1, limit + 1), _rng.Next(1, 11));
             return _currentQuestion;
         }
