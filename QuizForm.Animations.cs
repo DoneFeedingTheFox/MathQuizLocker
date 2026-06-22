@@ -29,7 +29,7 @@ namespace MathQuizLocker
 			ShowDamage(damage, new Point((int)_monsterRect.X, (int)_monsterRect.Y), Color.Red);
 
 			// Prepare sprite
-			ReplaceImage(ref _knightImg, AssetCache.GetImageClone(AssetPaths.KnightAttack(_equippedKnightStage)));
+			AssignCachedImage(ref _knightImg, AssetPaths.KnightAttack(_equippedKnightStage));
 			RecalcKnightDrawRect();
 
 			// Initialize melee state
@@ -131,7 +131,7 @@ namespace MathQuizLocker
 				isHeavyHit ? Color.DarkRed : Color.OrangeRed
 			);
 
-			ReplaceImage(ref _knightImg, AssetCache.GetImageClone(AssetPaths.KnightHit(_equippedKnightStage)));
+			AssignCachedImage(ref _knightImg, AssetPaths.KnightHit(_equippedKnightStage));
 			RecalcKnightDrawRect();
 
 			if (playerDefeated)
@@ -202,25 +202,24 @@ namespace MathQuizLocker
 			}
 			else if (_chestShakeTicks == 20)
 			{
-				ReplaceImage(ref _chestImg, AssetCache.GetImageClone(AssetPaths.Items("chest_open_01.png")));
+				AssignCachedImage(ref _chestImg, AssetPaths.Items("chest_open_01.png"));
 			}
 			else if (_chestShakeTicks == 25)
 			{
 				if (!string.IsNullOrEmpty(_pendingLootItemFile))
 				{
-					ReplaceImage(ref _lootImg, AssetCache.GetImageClone(AssetPaths.Items(_pendingLootItemFile)));
+					AssignCachedImage(ref _lootImg, AssetPaths.Items(_pendingLootItemFile));
 					_lootVisible = true;
 				}
 
 				_equippedKnightStage = _pendingKnightStage;
 				_settings.PlayerProgress.EquippedKnightStage = _equippedKnightStage;
-				AppSettings.Save(_settings);
+				AppSettings.SaveImmediate(_settings);
 
 				_btnContinue.Visible = true;
 				_btnExit.Visible = true;
 
 				_isChestOpening = false;
-				_awaitingChestOpen = false;
 
 				SetKnightIdleSprite();
 			}
@@ -266,14 +265,11 @@ namespace MathQuizLocker
 				// Transition complete
 				_transitionOffsetX = screenWidth;
 
-				// Dispose old images
-				this.BackgroundImage?.Dispose();
-				_monsterImg?.Dispose();
-				_transitionGraphicImg?.Dispose();
+				ReleaseBackgroundImage();
+				ClearCachedImage(ref _monsterImg);
+				ClearCachedImage(ref _transitionGraphicImg);
 
-				// Swap next images to current
-				this.BackgroundImage = _nextBackgroundImage;
-				this.BackgroundImageLayout = ImageLayout.Stretch;
+				SetBackgroundImage(_nextBackgroundImage);
 				_nextBackgroundImage = null;
 
 				_monsterImg = _nextMonsterImg;
@@ -313,6 +309,8 @@ namespace MathQuizLocker
 				// Finalize new scene
 				_isTransitioning = false;
 				_transitionOffsetX = 0f;
+
+				ClearLootDisplay();
 
 				// Restore combat UI
 				_txtAnswer.Visible = true;

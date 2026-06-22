@@ -24,6 +24,9 @@
     <Compile Remove="MathQuizLocker.Tests\**" />
     <EmbeddedResource Remove="MathQuizLocker.Tests\**" />
     <None Remove="MathQuizLocker.Tests\**" />
+    <Compile Remove="tools\**" />
+    <EmbeddedResource Remove="tools\**" />
+    <None Remove="tools\**" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Assets\Dice\" />

@@ -58,8 +58,6 @@ namespace MathQuizLocker.Services
             CurrentMonsterAttackInterval = config.AttackInterval;
 
             _playerHealth = MaxPlayerHealth;
-
-			Console.WriteLine($"Battle Start: {config.MaxHealth} HP, {config.XpReward} XP Reward");
 		}
 
         /// <summary>Damage the player takes when the monster timer expires.</summary>
@@ -86,7 +84,7 @@ namespace MathQuizLocker.Services
 				XpSystem.AddXp(_progress, _currentMonsterXpReward);
 				leveledUp = xpBefore < requiredXp && _progress.CurrentXp >= requiredXp;
 
-				AppSettings.Save(_settings); // Save progress immediately on kill
+				AppSettings.SaveImmediate(_settings);
 				return true; // Monster defeated
 			}
 
@@ -99,8 +97,6 @@ namespace MathQuizLocker.Services
         {
             _playerHealth -= damage;
             if (_playerHealth < 0) _playerHealth = 0;
-
-            Console.WriteLine($"Knight took {damage} dmg. Health left: {_playerHealth}");
         }
 
         /// <summary>Checks the answer for the given (a,b) question and returns a result for the UI.</summary>
@@ -111,7 +107,6 @@ namespace MathQuizLocker.Services
 
             if (isCorrect)
             {
-                AppSettings.Save(_settings);
                 result.Message = "Correct!";
                 result.MessageColor = Color.LimeGreen;
             }

@@ -35,13 +35,12 @@ namespace MathQuizLocker.Services
 					// Validate and sanitize: keep only entries with valid data
 					rawList = rawList
 						.Where(tg => tg != null && !string.IsNullOrWhiteSpace(tg.FromBiome) && !string.IsNullOrWhiteSpace(tg.ToBiome) && !string.IsNullOrWhiteSpace(tg.GraphicPath))
-						.Select(tg =>
-						{
-							// Normalize path separators and combine with Assets folder
-							string relativePath = (tg.GraphicPath ?? "").Trim().Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-							tg!.GraphicPath = Path.Combine(baseDir, "Assets", relativePath);
-							return tg;
-						})
+                        .Select(tg =>
+                        {
+                            string relativePath = (tg.GraphicPath ?? "").Trim().Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+                            tg!.GraphicPath = AssetPaths.ResolveExistingPath(Path.Combine(baseDir, "Assets", relativePath));
+                            return tg;
+                        })
 						.ToList();
 
 					_transitionGraphics = rawList;

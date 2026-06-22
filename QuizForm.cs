@@ -10,10 +10,13 @@ namespace MathQuizLocker
 	/// <summary>Main fullscreen form: combat UI, dice animation, knight/monster sprites, story screen, and quiz flow.</summary>
 	public partial class QuizForm : Form
 	{
-		// --- Graphics resources (caller-disposed where we pass clones) ---
-		private readonly Font _damageFont = new Font("Segoe UI", 48, FontStyle.Bold);
-		private readonly SolidBrush _damageBrush = new SolidBrush(Color.Red);
-		private readonly SolidBrush _overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0));
+        // --- Graphics resources ---
+        private readonly Font _damageFont = new Font("Segoe UI", 48, FontStyle.Bold);
+        private readonly SolidBrush _damageBrush = new SolidBrush(Color.Red);
+        private readonly SolidBrush _overlayBrush = new SolidBrush(Color.FromArgb(180, 40, 0, 0));
+        private readonly SolidBrush _healthGreenBrush = new SolidBrush(Color.LimeGreen);
+        private readonly SolidBrush _healthRedBrush = new SolidBrush(Color.Red);
+        private Bitmap? _groundShadowBitmap;
 
 		private MonsterService _monsterService;
 		private TransitionGraphicService _transitionGraphicService;
@@ -45,8 +48,10 @@ namespace MathQuizLocker
 		private string _currentMonsterName = "goblin";
 
 		// Animation / physics
-		private readonly System.Windows.Forms.Timer _heartbeat = new System.Windows.Forms.Timer { Interval = 15 };
-		private int _heartbeatInterval = 15; // Dynamic interval (faster during transitions)
+        private const int CombatHeartbeatMs = 15;
+        private const int TransitionHeartbeatMs = 33; // ~30 FPS during scene scroll
+        private readonly System.Windows.Forms.Timer _heartbeat = new System.Windows.Forms.Timer { Interval = CombatHeartbeatMs };
+        private int _heartbeatInterval = CombatHeartbeatMs;
 		private long _lastTickMs;
 
 		private bool _isDicePhysicsActive = false;
@@ -135,6 +140,9 @@ namespace MathQuizLocker
 				? _settings.PlayerProgress.EquippedKnightStage
 				: 1;
 
+			ConfigureDisplaySizeForScreen();
+			AssetPreloader.Warmup(_settings, _monsterService);
+
 			// Heartbeat
 			_lastTickMs = Environment.TickCount64;
 			_heartbeat.Tick += Heartbeat_Tick;
@@ -147,13 +155,12 @@ namespace MathQuizLocker
 			_countdownTimer.Interval = 1000;
 		}
 
-		/// <summary>~15ms timer (12ms during transitions): updates floating damage numbers, dice physics, melee, monster lunge, chest shake; invalidates only dirty regions.</summary>
+		/// <summary>~15ms combat / ~33ms transitions: updates animations and invalidates dirty regions.</summary>
 		private void Heartbeat_Tick(object? sender, EventArgs e)
 		{
 			if (!IsHandleCreated || IsDisposed) return;
 
-			// Use faster update rate during transitions for smoother scrolling
-			int targetInterval = _isTransitioning ? 12 : 15;
+			int targetInterval = _isTransitioning ? TransitionHeartbeatMs : CombatHeartbeatMs;
 			if (_heartbeatInterval != targetInterval)
 			{
 				_heartbeatInterval = targetInterval;
@@ -261,6 +268,7 @@ namespace MathQuizLocker
 
 		private void CloseStoryAndResume()
 		{
+			ClearLootDisplay();
 			// Allow OnPaint to switch back to Game drawing logic
 			_isShowingStory = false;
 			_isAnimating = false;
@@ -337,8 +345,8 @@ namespace MathQuizLocker
 			_btnStoryExit.FlatAppearance.BorderSize = 1;
 			_btnStoryExit.Click += (s, e) =>
 			{
-				AppSettings.Save(_settings);
-				Environment.Exit(0);
+				AppSettings.SaveImmediate(_settings);
+				Close();
 			};
 
 			this.Controls.Add(_lblStoryText);
@@ -348,10 +356,27 @@ namespace MathQuizLocker
 
 		private void QuizForm_Resize(object? sender, EventArgs e)
 		{
+			if (ClientSize.Width <= 0 || ClientSize.Height <= 0)
+				return;
+
+			AssetCache.ConfigureDisplaySize(ClientSize.Width, ClientSize.Height);
+
 			if (_isShowingStory)
+			{
+				ApplyBiomeForCurrentLevel();
 				ShowStoryScreen();
+			}
 			else
+			{
+				ApplyBiomeForCurrentLevel();
 				LayoutCombat();
+			}
+		}
+
+		private void ConfigureDisplaySizeForScreen()
+		{
+			var bounds = Screen.PrimaryScreen?.Bounds ?? Bounds;
+			AssetCache.ConfigureDisplaySize(bounds.Width, bounds.Height);
 		}
 
 		protected override void OnShown(EventArgs e)
@@ -395,8 +420,7 @@ namespace MathQuizLocker
 
 		private void SetKnightIdleSprite()
 		{
-			string path = AssetPaths.KnightSprite(_equippedKnightStage);
-			ReplaceImage(ref _knightImg, AssetCache.GetImageClone(path));
+			AssignCachedImage(ref _knightImg, AssetPaths.KnightSprite(_equippedKnightStage));
 			RecalcKnightDrawRect();
 		}
 
@@ -444,41 +468,38 @@ namespace MathQuizLocker
 			if (_isTransitioning)
 			{
 				// Draw both scenes during transition with smooth transforms
-				// Current scene sliding left
 				var state1 = g.Save();
 				g.TranslateTransform(-_transitionOffsetX, 0);
-				DrawScene(g, true);
+				DrawScene(g, isCurrentScene: true, drawCurrentBackground: true);
 				g.Restore(state1);
 
-				// Next scene entering from right
 				var state2 = g.Save();
 				g.TranslateTransform(screenWidth - _transitionOffsetX, 0);
-				DrawScene(g, false);
+				DrawScene(g, isCurrentScene: false);
 				g.Restore(state2);
 			}
 			else
 			{
-				// Normal drawing - base.OnPaint draws the background
 				base.OnPaint(e);
-				DrawScene(g, true);
-				// Transition graphic is drawn inside DrawScene, no need to draw again
+				DrawScene(g, isCurrentScene: true, drawCurrentBackground: false);
 			}
 		}
 
 		/// <summary>Draws a scene (current or next) with all its elements.</summary>
-		private void DrawScene(Graphics g, bool isCurrentScene)
+		private void DrawScene(Graphics g, bool isCurrentScene, bool drawCurrentBackground = false)
 		{
 			if (isCurrentScene)
 			{
-				// Draw current scene
-				if (this.BackgroundImage != null)
+				if (drawCurrentBackground && this.BackgroundImage != null)
 				{
 					g.DrawImage(this.BackgroundImage, this.ClientRectangle);
 				}
 
-				// Shadows first (behind sprites and transition graphic)
-				DrawGroundShadow(g, _knightDrawRect);
-				DrawGroundShadow(g, _monsterDrawRect);
+				if (!_isTransitioning)
+				{
+					DrawGroundShadow(g, _knightDrawRect);
+					DrawGroundShadow(g, _monsterDrawRect);
+				}
 
 				if (_knightImg != null) g.DrawImage(_knightImg, _knightDrawRect);
 				if (_monsterImg != null) g.DrawImage(_monsterImg, _monsterDrawRect);
@@ -490,8 +511,8 @@ namespace MathQuizLocker
 				}
 
 				// Health bars
-				DrawHealthBar(g, Rectangle.Round(_knightRect), _session.CurrentPlayerHealth, 100, Color.LimeGreen);
-				DrawHealthBar(g, Rectangle.Round(_monsterRect), _session.CurrentMonsterHealth, _session.MaxMonsterHealth, Color.Red);
+				DrawHealthBar(g, Rectangle.Round(_knightRect), _session.CurrentPlayerHealth, 100, isPlayer: true);
+				DrawHealthBar(g, Rectangle.Round(_monsterRect), _session.CurrentMonsterHealth, _session.MaxMonsterHealth, isPlayer: false);
 
 				// Dice (physics or static)
 				if (_isDicePhysicsActive)
@@ -544,10 +565,7 @@ namespace MathQuizLocker
 
 				// Draw next monster first (behind the transition graphic)
 				if (_nextMonsterImg != null)
-				{
-					DrawGroundShadow(g, _nextMonsterRect);
 					g.DrawImage(_nextMonsterImg, _nextMonsterRect);
-				}
 
 				// Draw next transition graphic AFTER monster so it appears in front (acts as separator)
 				if (_nextTransitionGraphicImg != null)
@@ -564,6 +582,9 @@ namespace MathQuizLocker
 				_damageFont?.Dispose();
 				_damageBrush?.Dispose();
 				_overlayBrush?.Dispose();
+				_healthGreenBrush?.Dispose();
+				_healthRedBrush?.Dispose();
+				_groundShadowBitmap?.Dispose();
 			}
 			base.Dispose(disposing);
 		}
@@ -573,6 +594,7 @@ namespace MathQuizLocker
 			_countdownTimer?.Stop();
 			_heartbeat?.Stop();
 
+			AppSettings.FlushPendingSave();
 			DisposeRenderImages();
 
 			base.OnFormClosing(e);
@@ -589,24 +611,56 @@ namespace MathQuizLocker
 
 		private void DisposeRenderImages()
 		{
-			_knightImg?.Dispose(); _knightImg = null;
-			_monsterImg?.Dispose(); _monsterImg = null;
-			_die1Img?.Dispose(); _die1Img = null;
-			_die2Img?.Dispose(); _die2Img = null;
-			_mulImg?.Dispose(); _mulImg = null;
-			_chestImg?.Dispose(); _chestImg = null;
-			_lootImg?.Dispose(); _lootImg = null;
-			_transitionGraphicImg?.Dispose(); _transitionGraphicImg = null;
-			_nextTransitionGraphicImg?.Dispose(); _nextTransitionGraphicImg = null;
-			_nextBackgroundImage?.Dispose(); _nextBackgroundImage = null;
-			_nextMonsterImg?.Dispose(); _nextMonsterImg = null;
+			ClearCachedImage(ref _knightImg);
+			ClearCachedImage(ref _monsterImg);
+			ClearCachedImage(ref _die1Img);
+			ClearCachedImage(ref _die2Img);
+			ClearCachedImage(ref _mulImg);
+			ClearCachedImage(ref _chestImg);
+			ClearCachedImage(ref _lootImg);
+			ClearCachedImage(ref _transitionGraphicImg);
+			ClearCachedImage(ref _nextTransitionGraphicImg);
+			ClearCachedImage(ref _nextBackgroundImage);
+			ClearCachedImage(ref _nextMonsterImg);
+			ReleaseBackgroundImage();
 		}
 
-		private static void ReplaceImage(ref Image? target, Image? next)
+		private void ReleaseBackgroundImage()
 		{
+			var oldBg = this.BackgroundImage;
+			this.BackgroundImage = null;
+			AssetCache.DisposeIfOwned(oldBg);
+		}
+
+		private void SetBackgroundImage(Image? image)
+		{
+			var oldBg = this.BackgroundImage;
+			this.BackgroundImage = image;
+			if (image != null)
+				this.BackgroundImageLayout = ImageLayout.Stretch;
+			AssetCache.DisposeIfOwned(oldBg);
+		}
+
+		private static void AssignDisplayBackground(ref Image? target, string path)
+		{
+			var next = AssetCache.GetBackgroundForDisplay(path);
 			if (ReferenceEquals(target, next)) return;
-			target?.Dispose();
+			AssetCache.DisposeIfOwned(target);
 			target = next;
+		}
+
+		private static void AssignCachedImage(ref Image? target, string path)
+		{
+			var next = AssetCache.GetMasterBitmap(path);
+			if (ReferenceEquals(target, next)) return;
+			AssetCache.DisposeIfOwned(target);
+			target = next;
+		}
+
+		private static void ClearCachedImage(ref Image? target)
+		{
+			AssetCache.DisposeIfOwned(target);
+			target = null;
 		}
 
 		private void RecalcKnightDrawRect()
@@ -637,21 +691,33 @@ namespace MathQuizLocker
 		private void DrawGroundShadow(Graphics g, RectangleF spriteDrawRect)
 		{
 			var shadowRect = GetShadowRect(spriteDrawRect);
+			g.DrawImage(GetGroundShadowBitmap(), shadowRect);
+		}
 
-			using var path = new GraphicsPath();
-			path.AddEllipse(shadowRect);
+		private Bitmap GetGroundShadowBitmap()
+		{
+			if (_groundShadowBitmap != null)
+				return _groundShadowBitmap;
 
-			using var pgb = new PathGradientBrush(path)
+			const int w = 128;
+			const int h = 32;
+			var bmp = new Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+			using (var g = Graphics.FromImage(bmp))
 			{
-				// Lighter than before
-				CenterColor = Color.FromArgb(120, 0, 0, 0),
-				SurroundColors = new[] { Color.FromArgb(0, 0, 0, 0) }
-			};
+				g.Clear(Color.Transparent);
+				using var path = new GraphicsPath();
+				path.AddEllipse(0, 0, w, h);
+				using var pgb = new PathGradientBrush(path)
+				{
+					CenterColor = Color.FromArgb(120, 0, 0, 0),
+					SurroundColors = new[] { Color.FromArgb(0, 0, 0, 0) }
+				};
+				pgb.FocusScales = new PointF(0.45f, 0.65f);
+				g.FillPath(pgb, path);
+			}
 
-			// Softer fade (bigger focus values = less “hard core”)
-			pgb.FocusScales = new PointF(0.45f, 0.65f);
-
-			g.FillPath(pgb, path);
+			_groundShadowBitmap = bmp;
+			return _groundShadowBitmap;
 		}
 	}
 }

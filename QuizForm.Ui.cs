@@ -171,8 +171,7 @@ namespace MathQuizLocker
 				if (_awaitingChestOpen)
 				{
 					_btnContinue.Visible = _btnExit.Visible = false;
-					_chestVisible = _lootVisible = false;
-
+					ClearLootDisplay();
 					ShowStoryScreen();
 				}
 				else
@@ -187,8 +186,8 @@ namespace MathQuizLocker
 
 			_btnExit.Click += (s, e) =>
 			{
-				AppSettings.Save(_settings);
-				Application.Exit();
+				AppSettings.SaveImmediate(_settings);
+				Close();
 			};
 		}
 
@@ -209,6 +208,7 @@ namespace MathQuizLocker
 
 		private void RestartGame()
 		{
+			ClearLootDisplay();
 			_lblGameOver.Visible = false;
 			_btnRestart.Visible = false;
 
@@ -224,7 +224,7 @@ namespace MathQuizLocker
 		/// <summary>Called when monster HP reaches 0: applies level-up on boss kill, shows loot/story or continue button.</summary>
 		private void ShowVictoryScreen()
 		{
-			_awaitingChestOpen = false;
+			ClearLootDisplay();
 			bool wasBossFight = _currentMonsterName.ToLower().Contains("boss");
 
 			int currentLevel = _settings.PlayerProgress.Level;
@@ -256,7 +256,7 @@ namespace MathQuizLocker
 			}
 
 			UpdatePlayerHud();
-			AppSettings.Save(_settings);
+			AppSettings.SaveImmediate(_settings);
 
 			// UI transition
 			_txtAnswer.Visible = _btnSubmit.Visible = false;
@@ -279,14 +279,15 @@ namespace MathQuizLocker
 
 		private void ShowStoryScreen()
 		{
+			ClearLootDisplay();
 			_isShowingStory = true;
 			ApplyBiomeForCurrentLevel();
 
 			_lblLevel.Visible = false;
 			_lblXpStatus.Visible = false;
 
-			ReplaceImage(ref _knightImg, null);
-			ReplaceImage(ref _monsterImg, null);
+			ClearCachedImage(ref _knightImg);
+			ClearCachedImage(ref _monsterImg);
 
 			_lblStoryText.Text = LocalizationService.GetStory(_settings.PlayerProgress.Level);
 

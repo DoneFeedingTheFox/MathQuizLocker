@@ -6,7 +6,20 @@ namespace MathQuizLocker
     /// <summary>Persistence for app and player state. Stored under %LocalAppData%\MathQuizLocker\settings.json.</summary>
     public class AppSettings
     {
+        private static AppSettings? _pendingSave;
+        private static readonly object _saveLock = new();
+        private static System.Threading.Timer? _saveTimer;
+        private static readonly TimeSpan SaveDebounce = TimeSpan.FromSeconds(1.5);
         // --- Core Settings ---
+        /// <summary>Minutes without keyboard/mouse input before the quiz lock appears.</summary>
+        public int IdleMinutesBeforeLock { get; set; } = 5;
+
+        /// <summary>Show the quiz when the PC wakes from sleep or hibernate.</summary>
+        public bool LockOnWakeFromSleep { get; set; } = true;
+
+        /// <summary>Show the quiz immediately when the app starts.</summary>
+        public bool ShowQuizOnStartup { get; set; } = true;
+
         /// <summary>Highest multiplication row unlocked (e.g. 2 = 1× and 2× table).</summary>
         public int MaxFactorUnlocked { get; set; } = 2;
 
@@ -49,7 +62,46 @@ namespace MathQuizLocker
         /// <summary>
         /// Saves the current state to settings.json.
         /// </summary>
-        public static void Save(AppSettings settings)
+        public static void Save(AppSettings settings) => WriteSettings(settings);
+
+        /// <summary>Queues a save; writes after a short idle period to avoid disk I/O during combat.</summary>
+        public static void SaveDebounced(AppSettings settings)
+        {
+            lock (_saveLock)
+            {
+                _pendingSave = settings;
+                _saveTimer ??= new System.Threading.Timer(_ => FlushPendingSave(), null, Timeout.Infinite, Timeout.Infinite);
+                _saveTimer.Change(SaveDebounce, Timeout.InfiniteTimeSpan);
+            }
+        }
+
+        /// <summary>Writes immediately and cancels any pending debounced save.</summary>
+        public static void SaveImmediate(AppSettings settings)
+        {
+            lock (_saveLock)
+            {
+                _pendingSave = null;
+                _saveTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+            WriteSettings(settings);
+        }
+
+        /// <summary>Writes any queued debounced save (call on exit).</summary>
+        public static void FlushPendingSave()
+        {
+            AppSettings? toSave;
+            lock (_saveLock)
+            {
+                toSave = _pendingSave;
+                _pendingSave = null;
+                _saveTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+
+            if (toSave != null)
+                WriteSettings(toSave);
+        }
+
+        private static void WriteSettings(AppSettings settings)
         {
             try
             {
@@ -77,6 +129,7 @@ namespace MathQuizLocker
             int expectedUnlockForLevel = Math.Clamp(s.PlayerProgress.Level + 1, 1, 10);
             s.MaxFactorUnlocked = Math.Clamp(Math.Max(s.MaxFactorUnlocked, expectedUnlockForLevel), 1, 10);
             s.LanguageCode ??= "";
+            s.IdleMinutesBeforeLock = Math.Clamp(s.IdleMinutesBeforeLock, 1, 120);
         }
 
         /// <summary>

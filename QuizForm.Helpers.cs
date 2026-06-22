@@ -11,23 +11,15 @@ namespace MathQuizLocker
 		/// <summary>Sets the form background from Assets/Backgrounds based on player level and boss flag (e.g. meadow_01.png or castle_01_boss.png).</summary>
 		private void ApplyBiomeForCurrentLevel()
 		{
-			var oldBg = this.BackgroundImage;
-			this.BackgroundImage = null;
-			oldBg?.Dispose();
+			ReleaseBackgroundImage();
 			if (_isShowingStory)
 			{
-				var img = AssetCache.GetImageClone(AssetPaths.Background("scroll_bg.png"));
-				if (img != null)
-				{
-					this.BackgroundImage = img;
-					this.BackgroundImageLayout = ImageLayout.Stretch;
-				}
+				SetBackgroundImage(AssetCache.GetBackgroundForDisplay(AssetPaths.BackgroundBase("scroll_bg")));
 				return;
 			}
 
 			int level = _settings.PlayerProgress.Level;
 
-			// Base biome name (matches your folder exactly)
 			string biomeBase = level switch
 			{
 				1 => "meadow_01",
@@ -37,30 +29,18 @@ namespace MathQuizLocker
 				_ => "castle_01"
 			};
 
-			// Extract biome name for transition lookup (remove _01 suffix)
 			_currentBiome = biomeBase.Replace("_01", "");
 
-			// Boss suffix (matches *_boss.png exactly)
 			bool isBoss =
 				!string.IsNullOrEmpty(_currentMonsterName) &&
 				_currentMonsterName.Contains("boss", StringComparison.OrdinalIgnoreCase);
 
-			string fileName = isBoss
-				? $"{biomeBase}_boss.png"
-				: $"{biomeBase}.png";
-
-			string fullPath = AssetPaths.Background(fileName);
-
-			var bg = AssetCache.GetImageClone(fullPath);
+			string bgBase = isBoss ? $"{biomeBase}_boss" : biomeBase;
+			var bg = AssetCache.GetBackgroundForDisplay(AssetPaths.BackgroundBase(bgBase));
 			if (bg != null)
-			{
-				this.BackgroundImage = bg;
-				this.BackgroundImageLayout = ImageLayout.Stretch;
-			}
+				SetBackgroundImage(bg);
 			else
-			{
-				System.Diagnostics.Debug.WriteLine($"[BG LOAD FAIL] {fullPath}");
-			}
+				System.Diagnostics.Debug.WriteLine($"[BG LOAD FAIL] {AssetPaths.BackgroundBase(bgBase)}");
 		}
 
 		/// <summary>Scales image to fit inside container preserving aspect ratio; returns centered rectangle.</summary>
@@ -103,17 +83,12 @@ namespace MathQuizLocker
 		/// <summary>Starts a horizontal scroll transition to the next fight scene.</summary>
 		private void StartTransition()
 		{
-			// Clear UI elements (knight, monster, dice, combat UI)
-			_knightImg?.Dispose();
-			_knightImg = null;
-			_monsterImg?.Dispose();
-			_monsterImg = null;
-			_die1Img?.Dispose();
-			_die1Img = null;
-			_die2Img?.Dispose();
-			_die2Img = null;
-			_mulImg?.Dispose();
-			_mulImg = null;
+			ClearLootDisplay();
+			ClearCachedImage(ref _knightImg);
+			ClearCachedImage(ref _monsterImg);
+			ClearCachedImage(ref _die1Img);
+			ClearCachedImage(ref _die2Img);
+			ClearCachedImage(ref _mulImg);
 			_diceVisible = false;
 			_txtAnswer.Visible = false;
 			_btnSubmit.Visible = false;
@@ -133,17 +108,16 @@ namespace MathQuizLocker
 
 			// Pre-load next background
 			bool isBoss = CheckIfBossShouldSpawn();
-			string nextBiomeFile = level switch
+			string nextBgBase = level switch
 			{
-				1 => isBoss ? "meadow_01_boss.png" : "meadow_01.png",
-				2 => isBoss ? "swamp_01_boss.png" : "swamp_01.png",
-				3 => isBoss ? "forest_01_boss.png" : "forest_01.png",
-				4 => isBoss ? "cave_01_boss.png" : "cave_01.png",
-				_ => isBoss ? "castle_01_boss.png" : "castle_01.png"
+				1 => isBoss ? "meadow_01_boss" : "meadow_01",
+				2 => isBoss ? "swamp_01_boss" : "swamp_01",
+				3 => isBoss ? "forest_01_boss" : "forest_01",
+				4 => isBoss ? "cave_01_boss" : "cave_01",
+				_ => isBoss ? "castle_01_boss" : "castle_01"
 			};
 
-			string nextBgPath = AssetPaths.Background(nextBiomeFile);
-			ReplaceImage(ref _nextBackgroundImage, AssetCache.GetImageClone(nextBgPath));
+			AssignDisplayBackground(ref _nextBackgroundImage, AssetPaths.BackgroundBase(nextBgBase));
 
 			// Pre-load next monster
 			var nextMonsterConfig = _monsterService.GetMonsterByLevel(level, isBoss);
@@ -153,7 +127,7 @@ namespace MathQuizLocker
 			if (nextMonsterSpritePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
 				nextMonsterSpritePath = nextMonsterSpritePath.Substring(0, nextMonsterSpritePath.Length - 4);
 			string nextMonsterFullPath = nextMonsterSpritePath + ".png";
-			ReplaceImage(ref _nextMonsterImg, AssetCache.GetImageClone(nextMonsterFullPath));
+			AssignCachedImage(ref _nextMonsterImg, nextMonsterFullPath);
 
 			// Calculate next monster position
 			float scale = this.ClientSize.Height / 1080f;
@@ -166,22 +140,26 @@ namespace MathQuizLocker
 
 			// Look up and pre-load transition graphic
 			string? transitionGraphicPath = _transitionGraphicService.GetTransitionGraphic(_currentBiome, nextBiomeBase);
-			if (!string.IsNullOrEmpty(transitionGraphicPath) && File.Exists(transitionGraphicPath))
+			if (!string.IsNullOrEmpty(transitionGraphicPath))
 			{
-				ReplaceImage(ref _nextTransitionGraphicImg, AssetCache.GetImageClone(transitionGraphicPath));
-
-				if (_nextTransitionGraphicImg != null)
+				transitionGraphicPath = AssetPaths.ResolveExistingPath(transitionGraphicPath);
+				if (File.Exists(transitionGraphicPath))
 				{
-					float targetHeight = this.ClientSize.Height;
-					float aspectRatio = (float)_nextTransitionGraphicImg.Width / _nextTransitionGraphicImg.Height;
-					float graphicWidth = targetHeight * aspectRatio;
-					float graphicHeight = targetHeight;
+					AssignCachedImage(ref _nextTransitionGraphicImg, transitionGraphicPath);
 
-					_nextTransitionGraphicRect = new RectangleF(
-						this.ClientSize.Width - graphicWidth / 2f,
-						0,
-						graphicWidth,
-						graphicHeight);
+					if (_nextTransitionGraphicImg != null)
+					{
+						float targetHeight = this.ClientSize.Height;
+						float aspectRatio = (float)_nextTransitionGraphicImg.Width / _nextTransitionGraphicImg.Height;
+						float graphicWidth = targetHeight * aspectRatio;
+						float graphicHeight = targetHeight;
+
+						_nextTransitionGraphicRect = new RectangleF(
+							-graphicWidth / 2f, // Left side (half visible as next scene scrolls in)
+							0,
+							graphicWidth,
+							graphicHeight);
+					}
 				}
 			}
 
@@ -278,28 +256,24 @@ namespace MathQuizLocker
 			{
 				if (File.Exists(transitionGraphicPath))
 				{
-					var loadedImg = AssetCache.GetImageClone(transitionGraphicPath);
-					if (loadedImg != null)
+					if (AssetCache.GetMasterBitmap(transitionGraphicPath) != null)
 					{
-						ReplaceImage(ref _transitionGraphicImg, loadedImg);
+						AssignCachedImage(ref _transitionGraphicImg, transitionGraphicPath);
 
-						// Position on right side (half visible)
-						// Scale to full screen height while preserving aspect ratio
-						float scale = this.ClientSize.Height / 1080f;
 						float targetHeight = this.ClientSize.Height;
-						float aspectRatio = _transitionGraphicImg != null 
-							? (float)_transitionGraphicImg.Width / _transitionGraphicImg.Height 
-							: 0.2f; // Default aspect ratio if image is null
+						float aspectRatio = _transitionGraphicImg != null
+							? (float)_transitionGraphicImg.Width / _transitionGraphicImg.Height
+							: 0.2f;
 						float graphicWidth = targetHeight * aspectRatio;
 						float graphicHeight = targetHeight;
-						
+
 						_transitionGraphicRect = new RectangleF(
 							this.ClientSize.Width - graphicWidth / 2f,
 							0,
 							graphicWidth,
 							graphicHeight);
 
-						System.Diagnostics.Debug.WriteLine($"[TRANSITION GRAPHIC] Loaded: {transitionGraphicPath}, Original: {_transitionGraphicImg?.Width}x{_transitionGraphicImg?.Height}, Aspect: {aspectRatio:F2}, Scaled: {graphicWidth:F0}x{graphicHeight:F0}, Rect: {_transitionGraphicRect}");
+						System.Diagnostics.Debug.WriteLine($"[TRANSITION GRAPHIC] Loaded: {transitionGraphicPath}, Scaled: {graphicWidth:F0}x{graphicHeight:F0}");
 					}
 					else
 					{
@@ -333,10 +307,9 @@ namespace MathQuizLocker
 			string suffix = (state == "idle") ? "" : $"_{state}";
 			string fullPath = basePath + suffix + ".png";
 
-			var img = AssetCache.GetImageClone(fullPath);
-			if (img != null)
+			if (AssetCache.GetMasterBitmap(fullPath) != null)
 			{
-				ReplaceImage(ref _monsterImg, img);
+				AssignCachedImage(ref _monsterImg, fullPath);
 				RecalcMonsterDrawRect();
 			}
 		}
@@ -361,9 +334,9 @@ namespace MathQuizLocker
 			_b = q.b;
 
 			// 3. REFRESH VISUALS (dispose old sprite images explicitly)
-			ReplaceImage(ref _die1Img, AssetCache.GetImageClone(AssetPaths.Dice($"die_{_a}.png")));
-			ReplaceImage(ref _die2Img, AssetCache.GetImageClone(AssetPaths.Dice($"die_{_b}.png")));
-			ReplaceImage(ref _mulImg, AssetCache.GetImageClone(AssetPaths.Dice("multiply.png")));
+			AssignCachedImage(ref _die1Img, AssetPaths.Dice($"die_{_a}.png"));
+			AssignCachedImage(ref _die2Img, AssetPaths.Dice($"die_{_b}.png"));
+			AssignCachedImage(ref _mulImg, AssetPaths.Dice("multiply.png"));
 
 			_diceVisible = true;
 
@@ -373,7 +346,7 @@ namespace MathQuizLocker
 			_txtAnswer.Focus();
 		}
 
-		private void DrawHealthBar(Graphics g, Rectangle bounds, int current, int max, Color color)
+		private void DrawHealthBar(Graphics g, Rectangle bounds, int current, int max, bool isPlayer)
 		{
 			int barWidth = (int)(bounds.Width * 0.8);
 			int barHeight = 12;
@@ -382,10 +355,7 @@ namespace MathQuizLocker
 
 			g.FillRectangle(Brushes.DimGray, x, y, barWidth, barHeight);
 			float percent = Math.Max(0, (float)current / max);
-			using (var brush = new SolidBrush(color))
-			{
-				g.FillRectangle(brush, x, y, barWidth * percent, barHeight);
-			}
+			g.FillRectangle(isPlayer ? _healthGreenBrush : _healthRedBrush, x, y, barWidth * percent, barHeight);
 			g.DrawRectangle(Pens.Black, x, y, barWidth, barHeight);
 		}
 
@@ -411,18 +381,32 @@ namespace MathQuizLocker
 			_pendingLootItemFile = $"item_{currentLevel}.png";
 			_pendingKnightStage = currentLevel;
 
-			ReplaceImage(ref _chestImg, AssetCache.GetImageClone(AssetPaths.Items("chest_01.png")));
+			AssignCachedImage(ref _chestImg, AssetPaths.Items("chest_01.png"));
 			_chestVisible = true;
 			_lootVisible = false;
 
 			// Position chest relative to monster
+			float chestW = _chestRect.Width > 0 ? _chestRect.Width : 250f;
+			float chestH = _chestRect.Height > 0 ? _chestRect.Height : 200f;
 			_chestRect = new RectangleF(
 				_monsterRect.X + (_monsterRect.Width / 4f),
-				_monsterRect.Bottom - _chestRect.Height,
-				_chestRect.Width,
-				_chestRect.Height);
+				_monsterRect.Bottom - chestH,
+				chestW,
+				chestH);
 
 			AnimateChestOpening();
+		}
+
+		/// <summary>Hides chest/loot sprites and resets loot animation state.</summary>
+		private void ClearLootDisplay()
+		{
+			_chestVisible = false;
+			_lootVisible = false;
+			_isChestOpening = false;
+			_chestShakeTicks = 0;
+			_awaitingChestOpen = false;
+			ClearCachedImage(ref _chestImg);
+			ClearCachedImage(ref _lootImg);
 		}
 
 		private void AnimateChestOpening()

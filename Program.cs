@@ -64,8 +64,7 @@ namespace MathQuizLocker
                 {
                     if (updateForm.ShowDialog() == DialogResult.OK)
                     {
-                        var quiz = new QuizForm(settings);
-                        Application.Run(quiz);
+                        Application.Run(new LockApplicationContext(settings));
                     }
                     else
                     {
@@ -79,10 +78,11 @@ namespace MathQuizLocker
 
                 // Fallback launch if update check fails
                 var settings = AppSettings.Load();
-                Application.Run(new QuizForm(settings));
+                Application.Run(new LockApplicationContext(settings));
             }
             finally
             {
+                AppSettings.FlushPendingSave();
                 AssetCache.DisposeAll();
                 if (_mutex != null)
                 {

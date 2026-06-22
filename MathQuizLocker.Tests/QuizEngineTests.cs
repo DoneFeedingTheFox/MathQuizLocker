@@ -61,6 +61,24 @@ namespace MathQuizLocker.Tests
         }
 
         [Fact]
+        public void GetNextQuestion_DoesNotRepeatPreviousFact()
+        {
+            var settings = new AppSettings { MaxFactorUnlocked = 10 };
+            var rng = new Random(7);
+            var engine = new QuizEngine(settings, rng);
+
+            var first = engine.GetNextQuestion();
+            for (int i = 0; i < 30; i++)
+            {
+                var next = engine.GetNextQuestion();
+                Assert.False(
+                    (first.a == next.a && first.b == next.b) || (first.a == next.b && first.b == next.a),
+                    $"Repeated fact {first.a}x{first.b} immediately after itself");
+                first = next;
+            }
+        }
+
+        [Fact]
         public void PromoteToNextLevel_SyncsDifficultyWithCurrentLevel()
         {
             var settings = new AppSettings
